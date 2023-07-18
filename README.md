@@ -70,7 +70,8 @@ The base opCode will be 5-bit, then a branch type param with 3-bit. All branch t
 ### Param Function
 The base opCode will be 3-bit, then a function type param with 5-bit. The arguments needed will depend on each function, but each argument will always be 1 byte memory address. For all the options, please read the documentation from the SYS opCode.
 
-Go to SYS functions (TODO)
+[Go to SYS functions](./SYS.md)
+
 
 ## Instruction arguments
 
