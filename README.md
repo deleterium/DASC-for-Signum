@@ -2,6 +2,13 @@
 
 This projects aims to create an architecture that will be executed by a Smart Contract in Signum blockchain. This contract will act as a Virtual Machine to execute contracts sent as messages to the VM by the VM creator.
 
+## Current status
+* Overall: **incomplete**
+* Architecture: beta
+* Assembly syntax: beta
+* Assembler: incomplete
+* VM Contract: incomplete
+
 ## VM Smart Contract source code
 
 Go to VM source code (TODO)
@@ -126,3 +133,7 @@ The following table shows the type of arguments that can be required by opCodes:
 | Reserved |  |  |  |  | 0xE0-0xFF |  |
 
 1) If source is immediate, the signed byte argument is casted to signed long before the operation.
+
+## Assembly syntax
+
+Go to Assembly syntax (TODO)
