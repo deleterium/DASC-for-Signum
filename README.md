@@ -136,4 +136,4 @@ The following table shows the type of arguments that can be required by opCodes:
 
 ## Assembly syntax
 
-Go to Assembly syntax (TODO)
+Go to [assembly syntax](./Assembly-syntax.md)
