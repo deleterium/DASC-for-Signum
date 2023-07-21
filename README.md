@@ -11,7 +11,7 @@ This projects aims to create an architecture that will be executed by a Smart Co
 
 ## VM Smart Contract source code
 
-Go to VM source code (TODO)
+Go to [VM source code](./DASC-VM/README.md).
 
 ## Features
 * 2 registers (64-bit)
