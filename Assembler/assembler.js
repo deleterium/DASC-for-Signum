@@ -39,6 +39,7 @@ function assembler(assembly_source) {
             { op_code: 0xB4, name: "JMP", size:1, args_type: "J", regex: /^\s*JMP\s+(\w+)\s*$/},
             { op_code: 0xB5, name: "CALL", size:1, args_type: "J", regex: /^\s*CALL\s+(\w+)\s*$/},
             { op_code: 0xB6, name: "EXEC", size:1, args_type: "s", regex: /^\s*EXEC\s+(\w+)\s*$/},
+            { op_code: 0xB7, name: "HARA", size:1, args_type: "J", regex: /^\s*HARA\s+(\w+)\s*$/},
             { op_code: 0xB8, name: "BZ", size:1, args_type: "B", regex: /^\s*BZ\s+(\w+)\s*$/},
             { op_code: 0xB9, name: "BNZ", size:1, args_type: "B", regex: /^\s*BNZ\s+(\w+)\s*$/},
             { op_code: 0xBA, name: "BGZ", size:1, args_type: "B", regex: /^\s*BGZ\s+(\w+)\s*$/},
