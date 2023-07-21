@@ -128,8 +128,8 @@ The following table shows the type of arguments that can be required by opCodes:
 | Jump | JMP |  | short | 0xB4 | 0xB4 | Jumps to the argument address |
 | Jump | CALL |  | short | 0xB5 | 0xB5 | Call the function at argument address, storing the returning address in RA |
 | Jump | EXEC |  | short | 0xB6 | 0xB6 | Call the function at argument address in the program at R, storing the returning address in RA. After call the R will be set to the caller program. |
+| Jump | HARA |  | short | 0xB7 | 0xB7 | **H**alt program **A**nd **R**estart **A**t argument address on next activation. |
 | System | SYS | func | N*memAdr | 0xC0 | 0xC0-0xDF | Number of arguments is dependent of func type. |
-| Reserved |  |  |  | 0xB7 | 0xB7 |  |
 | Reserved |  |  |  |  | 0xE0-0xFF |  |
 
 1) If source is immediate, the signed byte argument is casted to signed long before the operation.
