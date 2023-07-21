@@ -1,4 +1,4 @@
-# DASC assembly language syntax
+# DASC assembly language syntax and examples
 
 ## Comments
 Any text placed after a ` # `, including the # symbol, is a comment and will not be parsed.
@@ -46,14 +46,14 @@ This directive will cause the next instruction to be placed at the start of a co
 ```
     NOP
 ```
-This program will execute the no-operation instruction and then exit. All programs will end if there is no instuction or if they jump to an address without code.
+This program will execute the no-operation instruction and then return the the VM contract (RST or reset). All programs will end with a reset if there is no instuction or if they jump to an address without code.
 
 ### Simple infinite loop
 ```
 loop:
     BA loop
 ```
-Execute the instruction branch always, then jump to it again.
+Execute the instruction branch always, then jump to it again. This program will never return the command to the VM contract.
 
 ### Countdown from 10 to zero
 ```
@@ -81,3 +81,29 @@ loop_end:
 |    BA loop | Jump always to `loop` |
 |loop_end: | Label |
 |    NOP |  No-operation, simulating you program doing something |
+
+### Looping incoming transactions - simple
+
+```
+setup:
+    SYS getCreator, creator
+    SET64 oneSigna, 100000000
+
+main:
+    SYS getNextTx, txId
+    SET $, txId
+    BZ loop_break
+
+    SYS getSender, sender, txId
+    SYS getAmount, amount, txId
+    SHR amount, 1
+    SYS sendAmount, amount, sender
+    BA main
+
+loop_break:
+    SYS getCurrentBalance, curBal
+    SUB curBal, oneSigna
+    SYS sendAmount, curBal, creator
+    HARA main
+```
+This example program will return half of the incoming balance received back to sender. After no more transactions to process, the contract will then send almost all balance to the contract creator, keeping one signa to pay fees for the VSC to end gracefully.
