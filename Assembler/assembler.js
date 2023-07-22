@@ -19,19 +19,19 @@ function assembler(assembly_source) {
             { op_code: 0x01, name: "NOP", size: 1, args_type: "",regex: /^\s*NOP\s*$/},
             { op_code: 0x02, name: "JNCP", size: 1, args_type: "",regex: /^\s*JNCP\s*$/},
             { op_code: 0x03, name: "SLEEP", size: 1, args_type: "",regex: /^\s*SLEEP\s*$/},
-            { op_code: 0x04, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+([$*\w]+)\s*$/},
-            { op_code: 0x08, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+([$*\w]+)\s*,\s*(\w+)\s*$/},
-            { op_code: 0x0C, name: "SET64", size:1, args_type: "Tl", regex: /^\s*SET64\s+([$*\w]+)\s*,\s*(\w+)\s*$/},
-            { op_code: 0x10, name: "SET", size:1, args_type: "US", regex: /^\s*SET\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x20, name: "ADD", size:1, args_type: "US", regex: /^\s*ADD\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x30, name: "SUB", size:1, args_type: "US", regex: /^\s*SUB\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x40, name: "MUL", size:1, args_type: "US", regex: /^\s*MUL\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x50, name: "DIV", size:1, args_type: "US", regex: /^\s*DIV\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x60, name: "OR",size:1, args_type: "US", regex: /^\s*OR\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x70, name: "XOR", size:1, args_type: "US", regex: /^\s*XOR\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x80, name: "SHL", size:1, args_type: "US", regex: /^\s*SHL\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0x90, name: "SHR", size:1, args_type: "US", regex: /^\s*SHR\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
-            { op_code: 0xA0, name: "AND", size:1, args_type: "US", regex: /^\s*AND\s+([$*\w]+)\s*,\s*([$*\w]+)\s*$/},
+            { op_code: 0x04, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+(\$|[*]?\w+)\s*$/},
+            { op_code: 0x08, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/},
+            { op_code: 0x0C, name: "SET64", size:1, args_type: "Tl", regex: /^\s*SET64\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/},
+            { op_code: 0x10, name: "SET", size:1, args_type: "US", regex: /^\s*SET\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x20, name: "ADD", size:1, args_type: "US", regex: /^\s*ADD\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x30, name: "SUB", size:1, args_type: "US", regex: /^\s*SUB\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x40, name: "MUL", size:1, args_type: "US", regex: /^\s*MUL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x50, name: "DIV", size:1, args_type: "US", regex: /^\s*DIV\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x60, name: "OR",size:1, args_type: "US", regex: /^\s*OR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x70, name: "XOR", size:1, args_type: "US", regex: /^\s*XOR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x80, name: "SHL", size:1, args_type: "US", regex: /^\s*SHL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0x90, name: "SHR", size:1, args_type: "US", regex: /^\s*SHR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
+            { op_code: 0xA0, name: "AND", size:1, args_type: "US", regex: /^\s*AND\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
             { op_code: 0xB0, name: "RET", size:1, args_type: "", regex: /^\s*RET\s*$/},
             { op_code: 0xB1, name: "RETLIB", size:1, args_type: "", regex: /^\s*RETLIB\s*$/},
             { op_code: 0xB2, name: "SRA", size:1, args_type: "", regex: /^\s*SRA\s*$/},
@@ -234,12 +234,8 @@ function assembler(assembly_source) {
                         // Numbers are invalid for target
                         throw new TypeError(`Error at line ${currentLine}: Invalid value for target.`);
                     }
-                    let val = Number(varName)
-                    if (val > 255 || val < 0) {
-                        throw new TypeError(`Error at line ${currentLine}: Immediate value must be 8-bit.`);
-                    }
                     bitParam = 0x2;
-                    CodeObj.content.push(val);
+                    CodeObj.content.push(adjustBits(varName, 8, currentLine));
                 } else {
                     bitParam = 0x1 << (type === "U" ? 2 : 0);
                     CodeObj.content.push(getAndSetMemoryAddress(varName));
@@ -250,12 +246,12 @@ function assembler(assembly_source) {
                 continue;
             case "l":
                 CodeObj.size += 8;
-                CodeObj.content.push(BigInt(defineOrValue(parts[i+1])));
+                CodeObj.content.push(adjustBits(parts[i+1], 64, currentLine));
                 CodeObj.content_type.push(type);
                 continue;
             case "s":
                 CodeObj.size += 2;
-                CodeObj.content.push(BigInt(defineOrValue(parts[i+1])));
+                CodeObj.content.push(adjustBits(parts[i+1], 16, currentLine));
                 CodeObj.content_type.push(type);
                 continue;
             case "B": //branch offset will be processed later
@@ -288,6 +284,22 @@ function assembler(assembly_source) {
             }
         }
         AsmObj.code.push(CodeObj);
+    }
+
+    function adjustBits(str, bits, currentLine) {
+        bits = BigInt(bits);
+        str = defineOrValue(str);
+        if (isNaN(str)) {
+            throw new TypeError(`Error at line ${currentLine}: Invalid number value.`);
+        }
+        let val = BigInt(str);
+        if (val >= 1n << bits || val < -1n << (bits - 1n) ) {
+            throw new TypeError(`Error at line ${currentLine}: Immediate value must be ${bits}-bit.`);
+        }
+        if (val < 0n) {
+            val += 1n << (bits);
+        }
+        return val
     }
 
     function defineOrValue(val) {
