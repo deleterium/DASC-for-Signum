@@ -108,10 +108,10 @@ void execHiOpCode0() {
     case 0x04: // 0x04 NOT
         *pTarget = ~*pTarget;
         return;
-    case 0x08: // 0x08 CP2
+    case 0x08: // 0x08 SET16
         *pTarget = getShort();
         return;
-    default:   // 0x0C CP3
+    default:   // 0x0C SET64
         *pTarget = getLong();
         return;
     }
@@ -123,7 +123,7 @@ void execHiOpCode1toA() {
     
     if (hiOpCode < 0x6) {
         switch (hiOpCode) {
-        case 0x1: // 0x10 CP
+        case 0x1: // 0x10 SET
             *pTarget = source;
             return;
         case 0x2: // 0x20 ADD
