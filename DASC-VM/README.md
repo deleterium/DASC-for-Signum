@@ -24,6 +24,8 @@ Currently in beta, running tests and subject to change.
 
 #pragma maxConstVars 10
 #pragma version 2.1
+#pragma verboseAssembly
+#pragma optimizationLevel 3
 
 const long n11 = 11, n12 = 12, n13 = 13, n14=14, n15=15;
 const long n32 = 32, n127 = 127, n255 = 255;
@@ -117,7 +119,7 @@ void execHiOpCode0() {
 
 void execHiOpCode1toA() {
     long *pTarget = getTarget((opCode >> 2) & 0x03);
-    long source = *getSource(opCode & 0x03);
+    long source = getSource(opCode & 0x03);
     
     if (hiOpCode < 0x6) {
         switch (hiOpCode) {
@@ -171,7 +173,11 @@ void execHiOpCodeB() {
             advanceOffset(getByte());
             return;
         }
-        advanceOffset(1);
+        CIP++;
+        if (CIP == 32) {
+            CIP = 0;
+            CPG++;
+        }        
         return;
     }
     if (lowOpCode >= 0x4) {
@@ -372,39 +378,48 @@ long *getTarget(long type) {
     return VMM + (VMM[b] & 0xFF);
 }
 
-long *getSource(long type) {
-    long imm;
+long getSource(long type) {
     if (type == 0x00) { // Register
-        return &R;
+        return R;
     }
     long b = getByte();
     switch (type) {
     case 0x01: // Memory
-        return VMM + b;
+        return VMM[b];
     case 0x02: // Immediate
-        imm = b;
-        if (imm > 0x7F) {
-            imm -= 0x100;
+        if (b > 0x7F) {
+            b -= 0x100;
         }
-        return &imm;
+        return b;
     default: // 0x03 Content Of Memory
-        return VMM + (VMM[b] & 0xFF);
+        return VMM[VMM[b] & 0xFF];
     }
 }
 
 long getByte() {
-    long buffer = getCodePageItem(CIP / 8);
-    shift =  (CIP % 8) * 8;
-    advanceOffset(1);
+    ensureCodePage();
+    long buffer = codePage[CIP / 8];
+    shift = (CIP % 8) * 8;
+    CIP++;
+    if (CIP == 32) {
+        CIP = 0;
+        CPG++;
+    }        
     return (buffer >> shift) & 0xFF;
 }
 
 long getShort() {
-    shift =  (CIP % 8) * 8;
-    retVal = getCodePageItem(CIP / 8) >> shift;
-    advanceOffset(2);
+    ensureCodePage();
+    shift = (CIP % 8) * 8;
+    retVal = codePage[CIP / 8] >> shift;
+    CIP += 2;
+    if (CIP >= 32) {
+        CIP %= 32;
+        CPG++;
+    }
     if (shift == 56) {
-        retVal |= getCodePageItem(CIP / 8) << 8;
+        ensureCodePage();
+        retVal |= codePage[CIP / 8] << 8;
     }
     retVal &= 0xFFFF;
     if (retVal > 0x7FFF) {
@@ -414,18 +429,23 @@ long getShort() {
 }
 
 long getLong() {
+    ensureCodePage();
     shift =  (CIP % 8) * 8;
-    retVal = getCodePageItem(CIP / 8) >> shift;
-    advanceOffset(8);
+    retVal = codePage[CIP / 8] >> shift;
+    CIP += 8;
+    if (CIP >= 32) {
+        CIP %= 32;
+        CPG++;
+    }
     if (shift) {
-        retVal |= getCodePageItem(CIP / 8) << (64 - shift);
+        ensureCodePage();
+        retVal |= codePage[CIP / 8] << (64 - shift);
     }
     return retVal;
 }
 
-// Advances the offset and sets CIP CPG accordingly.
+// Advances CIP and CPG by an offset between -128 and +127.
 void advanceOffset(long offset) {
-    offset &= 0xFF;
     if (offset > 0x7F) {
         offset -= 0x100;
     }
@@ -433,7 +453,7 @@ void advanceOffset(long offset) {
     CIP += offset % 32;
     if (CIP < 0) {
         CPG--;
-        CIP+=32;
+        CIP += 32;
     }
     if (CIP >= 32) {
         CPG++;
@@ -441,13 +461,11 @@ void advanceOffset(long offset) {
     }
 }
 
-// Return the correct buffer, checking if it is needed
-//   to update the page.
-long getCodePageItem(long idx) {
-    if (loadedCPG != CPG) {
-        readMessage(VSC, CPG, codePage);
-        loadedCPG = CPG;
+void ensureCodePage() {
+    if (loadedCPG == CPG) {
+        return;
     }
-    return codePage[idx];
+    readMessage(VSC, CPG, codePage);
+    loadedCPG = CPG;
 }
 ```
