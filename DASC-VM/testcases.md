@@ -125,8 +125,115 @@ Expect m0=6.
 
 ## Functions
 
-TODO
+```
+# By convention, return value will be the last variable, and the arguments the previous.
+.adr retVal 0xff
+.adr arg1 0xfe
+.adr arg2 0xfd
+
+# Entry point
+    SET64 m0, 2555555
+    SET16 m1, -4444
+    SET arg1, m0
+    SET arg2, m1
+    CALL fn_modAddValues
+    SET m2, retVal
+    RST
+
+# Returns the modulus of argument 1
+fn_modValue:
+    SET $, arg1
+    BGEZ alreadyPositive
+    NOT $
+    ADD $, 1
+alreadyPositive:
+    SET retVal, $
+    RET
+
+# Returns the sum of the modulus of two arguments.
+#  We need to store return address because calling other function
+#  will overwrite the return address to the caller.
+fn_modAddValues:
+    SRA
+    SET callerRA, $
+    CALL fn_modValue
+    SET modArg1, retVal
+    SET arg1, arg2
+    CALL fn_modValue
+    ADD retVal, modArg1
+    SET $, callerRA
+    LRA
+    RET
+```
+Expect m2=2559999.
 
 ## Libraries
 
-TODO
+Same example as before, but using the functions in a library. First the library code:
+```
+# This is modAddLib
+
+# By convention, return value will be the last variable, and the arguments the previous.
+.adr retVal 0xff
+.adr arg1 0xfe
+.adr arg2 0xfd
+.startingAddress 0x80
+
+# Entry point. Only functions to be executed
+    RST
+
+# Returns the modulus of argument 1
+# This is a private function, it can only be called from this program. It does not store the caller
+fn_modValue:
+    SET $, arg1
+    BGEZ alreadyPositive
+    NOT $
+    ADD $, 1
+alreadyPositive:
+    SET retVal, $
+    RET
+
+# Returns the sum of the modulus of two arguments.
+#  We need to store return address because calling other function
+#  will overwrite the return address to the caller.
+# Also needed to store the caller program
+fn_modAddValues:
+    SET callerProgram, $
+    SRA
+    SET callerRA, $
+    CALL fn_modValue
+    SET modArg1, retVal
+    SET arg1, arg2
+    CALL fn_modValue
+    ADD retVal, modArg1
+    SET $, callerRA
+    LRA
+    SET $, callerProgram
+    RETLIB
+```
+Compile and send the program to any account. Let's assume the transaction was 12345678901234. Now we can use this library in other programs.
+
+```
+# This is the main program
+
+# By convention, return value will be the last variable, and the arguments the previous.
+.adr retVal 0xff
+.adr arg1 0xfe
+.adr arg2 0xfd
+
+# Details from the library
+.define modAddLib 12345678901234
+.define fn_modAddValues 0x000b
+.functionInfo fn_modAddValues 50-52
+
+# Entry point
+    SET64 m0, 2555555
+    SET16 m1, -4444
+    SET arg1, m0
+    SET arg2, m1
+    SET $, modAddLib
+    EXEC fn_modAddValues
+    SET m2, retVal
+    RST
+```
+Expect m2=2559999.
