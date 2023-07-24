@@ -10,7 +10,7 @@ function assembler(assembly_source) {
         op_code_table: [
             { op_code: 0x100, name: "blank", size:0, args_type: "",regex: /^\s*$/},
             { op_code: 0x101, name: "label", size:0, args_type: "",regex: /^\s*(\w+):\s*$/},
-            { op_code: 0x102, name: "adr", size:0, args_type: "",regex: /^\s*.adr\s+(\w+)\s+(\d+)\s*$/},
+            { op_code: 0x102, name: "adr", size:0, args_type: "",regex: /^\s*.adr\s+(\w+)\s+(\w+)\s*$/},
             { op_code: 0x103, name: "define", size:0, args_type: "",regex: /^\s*.define\s+(\w+)\s+(\w+)\s*$/},
             { op_code: 0x104, name: "functionInfo", size:0, args_type: "",regex: /^\s*.functionInfo\s+(\w+)(.*)$/},
             { op_code: 0x105, name: "startingAddress", size:0, args_type: "",regex: /^\s*.startingAddress\s+(\w+)\s*$/},
@@ -179,7 +179,7 @@ function assembler(assembly_source) {
             if (AsmObj.memory[parts[2]]) {
                 throw new TypeError(`Error at line ${currentLine}: redeclaring variable at memory address ${parts[2]}.`);
             }
-            AsmObj.memory[parts[2]] = parts[1];
+            AsmObj.memory[Number(parts[2])] = parts[1];
             return;
         case 0x103: // .define
             if (AsmObj.define[parts[1]] !== undefined) {
