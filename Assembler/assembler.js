@@ -18,10 +18,6 @@ function assembler(assembly_source) {
             { op_code: 0x00, name: "RST", size: 1, args_type: "",regex: /^\s*RST\s*$/},
             { op_code: 0x01, name: "NOP", size: 1, args_type: "",regex: /^\s*NOP\s*$/},
             { op_code: 0x02, name: "JNCP", size: 1, args_type: "",regex: /^\s*JNCP\s*$/},
-            { op_code: 0x03, name: "SLEEP", size: 1, args_type: "",regex: /^\s*SLEEP\s*$/},
-            { op_code: 0x04, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+(\$|[*]?\w+)\s*$/},
-            { op_code: 0x08, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/},
-            { op_code: 0x0C, name: "SET64", size:1, args_type: "Tl", regex: /^\s*SET64\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/},
             { op_code: 0x10, name: "SET", size:1, args_type: "US", regex: /^\s*SET\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
             { op_code: 0x20, name: "ADD", size:1, args_type: "US", regex: /^\s*ADD\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
             { op_code: 0x30, name: "SUB", size:1, args_type: "US", regex: /^\s*SUB\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
@@ -48,6 +44,10 @@ function assembler(assembly_source) {
             { op_code: 0xBD, name: "BLEZ", size:1, args_type: "B", regex: /^\s*BLEZ\s+(\w+)\s*$/},
             { op_code: 0xBE, name: "BA", size:1, args_type: "B", regex: /^\s*BA\s+(\w+)\s*$/},
             { op_code: 0xC0, name: "SYS", size:1, args_type: "F", regex: /^\s*SYS\s+(\w+)(.*)$/},
+            { op_code: 0xF0, name: "SLEEP", size: 1, args_type: "S",regex: /^\s*SLEEP\s+(\$|[*]?\w+)\s*$/},
+            { op_code: 0xF4, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+(\$|[*]?\w+)\s*$/},
+            { op_code: 0xF8, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/},
+            { op_code: 0xFC, name: "SET64", size:1, args_type: "Tl", regex: /^\s*SET64\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/}
         ],
         sys_code_table: [
             { name: "getNextTx", func_code: 0x00, args: 1 },
@@ -218,7 +218,7 @@ function assembler(assembly_source) {
             case "T":
             case "U":
             case "S":
-                let varName = parts[i+1];
+                let varName = defineOrValue(parts[i+1]);
                 let bitParam;
                 if (varName === "$") {
                     // Register

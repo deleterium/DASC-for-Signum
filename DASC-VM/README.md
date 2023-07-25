@@ -68,51 +68,42 @@ void main () {
 
 
 void executeInstruction(void) {
-    if (hiOpCode == 0x0) {
-        execHiOpCode0();
-        return;
-    }
-    if (hiOpCode <= 0xA) {
+    if (hiOpCode < 0xB) {
+        if (hiOpCode == 0x0) {
+            execHiOpCode0();
+            return;
+        }
+        // hiOpCode <= 0xA)
         execHiOpCode1toA();
         return;
     }
-    if (hiOpCode == 0xB) {
-        execHiOpCodeB();
-        return;
-    }
     if (hiOpCode <= 0xD) {
-        // Matches only SYS opCode
+        if (hiOpCode == 0xB) {
+            execHiOpCodeB();
+            return;
+        }
+        // hiOpCode is 0xC or 0xD) Matches only SYS opCode
         execSYS(opCode & 0x1F);
         return;
     }
-    // matches reserved 0xE and 0xF hiOpCode
+    if (hiOpCode == 0xF) {
+        execHiOpCodeF();
+        return;
+    }
+    // matches reserved 0xE hiOpCode
 }
 
 void execHiOpCode0() {
-    if (lowOpCode < 0x4) {
-        switch (lowOpCode) {
-        case 0x0: // 0x00 RST
-        case 0x1: // 0x01 NOP
-            return;
-        case 0x2: // 0x02 JNCP
-            CIP = 0;
-            CPG++;
-            return;
-        default:  // 0x03 SLEEP
-            sleep;
-            return;
-        }
-    }
-    long *pTarget = getTarget(opCode & 0x03);
-    switch (opCode & ~0x03) {
-    case 0x04: // 0x04 NOT
-        *pTarget = ~*pTarget;
+    switch (lowOpCode) {
+    case 0x0: // 0x00 RST
+    case 0x1: // 0x01 NOP
         return;
-    case 0x08: // 0x08 SET16
-        *pTarget = getShort();
+    case 0x2: // 0x02 JNCP
+        CIP = 0;
+        CPG++;
         return;
-    default:   // 0x0C SET64
-        *pTarget = getLong();
+    default:
+        // Reserved
         return;
     }
 }
@@ -233,6 +224,26 @@ void execHiOpCodeB() {
     }
     // 0xB3 LRA
     RA = R;
+    return;
+}
+
+void execHiOpCodeF(void) {
+    if (lowOpCode < 0x4) { // 0xF0 SLEEP
+        sleep getSource(opCode & 0x03);
+        return;
+    }
+
+    long *pTarget = getTarget(opCode & 0x03);
+    if (lowOpCode >= 0xC) { // 0xFC SET64
+        *pTarget = getLong();
+        return;
+    }
+    if (lowOpCode >= 0x8) { // 0xF8 SET16
+        *pTarget = getShort();
+        return;
+    }
+    // 0xF4 NOT
+    *pTarget = ~*pTarget;
     return;
 }
 

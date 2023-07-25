@@ -50,15 +50,18 @@ Target is a 2-bit param with the type of one argument. So the base opcode is 6-b
 | 10 | Reserved | Reserved |
 | 11 | Memory referenced by a memory addres | The memory address (unsigned) |
 
-### Param Target-Source
-Here there are two params, each one is 2-bit. The base opCode will be 4-bit, then a target (already described), and a source. Source types are used to reference a variable that will be read by the instruction. Some source params will need one additional byte, so the total instruction size is increased. Instruction size can be 1 to 3 bytes.
+### Param Source
+Base opcode is 6-bit and 2-bit are the source bit param. Source types are used to reference a variable that will be read by the instruction. Some source params will need one additional byte, so the total instruction size is increased. Instruction size can be 1 or 2 bytes.
 
-| Bit param | Source | Additional byte |
+ Bit param | Source | Additional byte |
 | --- | --- | --- |
 | 00 | General use register| Not needed |
 | 01 | Memory address | The memory address (unsigned) |
 | 10 | Immediate value | Signed byte value |
 | 11 | Memory referenced by a memory address | The memory address (unsigned) |
+
+### Param Target-Source
+Here there are two params, each one is 2-bit. The base opCode will be 4-bit, then a target and a source. Both types were already described. Instruction size can be 1 to 3 bytes.
 
 ### Param Branch
 The base opCode will be 5-bit, then a branch type param with 3-bit. All branch types require one argument with the offset to jump. This offset is a signed byte with the distance to jump from the next instruction. All branches decisions are taken evaluating the general use register R.
@@ -100,12 +103,9 @@ The following table shows the type of arguments that can be required by opCodes:
 | General | RST |  |  | 0x00 | 0x00 | Ends the program |
 | General | NOP |  |  | 0x01 | 0x01 | No operation (padding) |
 | General | JNCP |  |  | 0x02 | 0x02 | Jumps to next code page |
-| General | SLEEP |  |  | 0x03 | 0x03 | Stops contract execution and resumes in the next block |
 | General | SRA |  |  | 0xB2 | 0xB2 | R = RA |
 | General | LRA |  |  | 0xB3 | 0xB3 | RA = R |
-| Operation | NOT | trg |  | 0x04 | 0x04-0x07 | trg = ~trg |
-| Operation | SET16 | trg | short | 0x08 | 0x08-0x0B | Sets target to the 16-bit argument (to be casted to signed long) |
-| Operation | SET64 | trg | long | 0x0C | 0x0C-0x0F | Sets target to the 64-bit argument |
+| General | SLEEP | src¹ |  | 0xF0 | 0xF0-0xF3 | Stops contract execution and resumes after source blocks |
 | Operation | SET | trg, src¹ |  | 0x10 | 0x10-0x1F | trg = src |
 | Operation | ADD | trg, src¹ |  | 0x20 | 0x20-0x2F | trg += src |
 | Operation | SUB | trg, src¹ |  | 0x30 | 0x30-0x3F | trg -= src |
@@ -116,6 +116,9 @@ The following table shows the type of arguments that can be required by opCodes:
 | Operation | SHL | trg, src¹ |  | 0x80 | 0x80-0x8F | trg <<= src |
 | Operation | SHR | trg, src¹ |  | 0x90 | 0x90-0x9F | trg >>= src |
 | Operation | AND | trg, src¹ |  | 0xA0 | 0xA0-0xAF | trg &= src |
+| Operation | NOT | trg |  | 0xF4 | 0xF4-0xF7 | trg = ~trg |
+| Operation | SET16 | trg | short | 0xF8 | 0xF8-0xFB | Sets target to the 16-bit argument (to be casted to signed long) |
+| Operation | SET64 | trg | long | 0xFC | 0xFC-0xFF | Sets target to the 64-bit argument |
 | Branch | BZ | brch | offset | 0xB8 | 0xB8 | Jump to offset if R == 0 |
 | Branch | BNZ | brch | offset | 0xB8 | 0xB9 | Jump to offset if R != 0 |
 | Branch | BGZ | brch | offset | 0xB8 | 0xBA | Jump to offset if R > 0 |
@@ -130,7 +133,7 @@ The following table shows the type of arguments that can be required by opCodes:
 | Jump | EXEC |  | short | 0xB6 | 0xB6 | Call the function at argument address in the program at R, storing the returning address in RA. After call the R will be set to the caller program. |
 | Jump | HARA |  | short | 0xB7 | 0xB7 | **H**alt program **A**nd **R**estart **A**t argument address on next activation. |
 | System | SYS | func | N*memAdr | 0xC0 | 0xC0-0xDF | Number of arguments is dependent of func type. |
-| Reserved |  |  |  |  | 0xE0-0xFF |  |
+| Reserved |  |  |  |  | 0xE0-0xEF |  |
 
 1) If source is immediate, the signed byte argument is casted to signed long before the operation.
 
