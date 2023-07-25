@@ -65,7 +65,7 @@ Expect R=4, m0=-2, m1=5, m2=-2, m3=12, m4=1, m5=7, m6=2, m7=112, m8=2, m9=1.
 ## Branches - True
 ```
     XOR $, $
-    SET m0, $
+    SET m0, 10
     BZ next1
     ADD m0, 1
 next1:
@@ -92,7 +92,7 @@ next6:
 next7:
     RST
 ```
-Expect m0=0.
+Expect m0=10.
 
 ## Branches - False
 ```
@@ -231,7 +231,7 @@ Compile and send the program to any account. Let's assume the transaction was 12
     SET16 m1, -4444
     SET arg1, m0
     SET arg2, m1
-    SET $, modAddLib
+    SET64 $, modAddLib
     EXEC fn_modAddValues
     SET m2, retVal
     RST
