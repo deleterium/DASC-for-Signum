@@ -82,6 +82,25 @@ loop_end:
 |loop_end: | Label |
 |    NOP |  No-operation, simulating you program doing something |
 
+### Scheduled Signa transfer
+```
+setup:
+    SET64 recipient, 13597014728686028653 # Account ID
+    SET64 amount, 9700000000 # Amount in NQT
+    SET64 atBlock, 1101772 # Desired block
+
+main:
+    SYS getCurrentBlockheight, currBlock
+    SET $, atBlock
+    SUB $, currBlock
+    SLEEP $
+    SYS sendAmount, amount, recipient
+    SYS getCreator, recipient
+    SYS sendBalance, recipient
+
+```
+This program will send the desired amount of Signa to some address at a given blockheight. After sending, the program will return all remaining balance to the creator. Once done, the VM can be used again. Remember to add enough balance to the contract: the desired amount plus 3 signa to ensure contract will run until the end.
+
 ### Looping incoming transactions - simple
 
 ```
