@@ -48,7 +48,7 @@ SET m6, 6
 SET m7, 7
 SET m8, 8
 SET m9, 9
-SLEEP
+SLEEP 1
 NOT m0
 ADD m1, $
 SUB m2, $
