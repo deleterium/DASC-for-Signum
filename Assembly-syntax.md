@@ -109,12 +109,10 @@ setup:
     SET64 oneSigna, 100000000
 
 main:
-    SYS getNextTx, txId
+    SYS getNextTxDetails, txId, sender, amount
     SET $, txId
     BZ loop_break
 
-    SYS getSender, sender, txId
-    SYS getAmount, amount, txId
     SHR amount, 1
     SYS sendAmount, amount, sender
     BA main
@@ -126,3 +124,46 @@ loop_break:
     HARA main
 ```
 This example program will return half of the incoming balance received back to sender. After no more transactions to process, the contract will then send almost all balance to the contract creator, keeping one signa to pay fees for the VSC to end gracefully.
+
+### Looping incoming transactions - complete
+```
+setup:
+    SYS getCreator, creator
+    SET64 oneSigna, 100000000
+    SET64 contractActivation, 1000000000
+    SET end, 0
+
+.alignCodePage
+
+main:
+    SYS getNextTxDetails, txId, sender, amount
+    SET $, txId
+    BZ no_more_tx
+
+    SUB amount, contractActivation
+    SET $, amount
+    BLZ main           # do not process if too low
+    SHR amount, 1
+
+    SET $, sender
+    SUB $, creator
+    BNZ process_tx     # Contract will end
+    SET end, 1
+    BA main
+
+process_tx:            # Do your stuff
+    SYS sendAmount, amount, sender
+    BA main
+
+no_more_tx:            # Do your stuff
+    SYS getCurrentBalance, curBal
+    SUB curBal, oneSigna
+    SYS sendAmount, curBal, creator
+
+    SET $, end
+    BZ wait_next_activation
+    RST
+wait_next_activation:
+    HARA main
+```
+Now all incoming transactions with amount greater than VM activation PLUS VSC activation will be processed. When it receives a transaction from sender, trigger the contract end. All transactions in same block that this message from sender will be processed. The ending part (no_more_tx) will also be processed. If ended, the VM will be ready to run a new VSC in the next block.
