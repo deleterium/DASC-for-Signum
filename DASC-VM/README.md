@@ -17,10 +17,12 @@ Currently in beta, running tests and subject to change.
 
 ## Source code
 
+Keep in mind that Signum bytecode does not allow to create jump tables neither jump to arbitrary addresses (like creating a function's table). So the opCode processing should be an arcaic 'nested ifs' and I'm trying to balance them.
+
 ```c
 #program name DASCVM
 #program description VM contract to run DASC program. Code version beta.
-#program activationAmount 1.0
+#program activationAmount 2.0
 
 #pragma maxConstVars 10
 #pragma version 2.1
@@ -40,6 +42,8 @@ long CPG; // Current Page (0 to 30)
 long loadedCPG;
 long codePage[4]; // Current code page
 long opCode, hiOpCode, lowOpCode;
+long codeCache; //instruction cache
+long codeCacheReady; //instruction cache
 long codeAddr;
 
 long shift, retVal; // getByte, getShort and getLong
@@ -57,6 +61,7 @@ void main () {
         CIP = 0;
         CPG = 0;
         loadedCPG = -1;
+        codeCacheReady = false;
         do {
             opCode = getByte();
             lowOpCode = opCode & 0xF;
@@ -101,6 +106,7 @@ void execHiOpCode0() {
     case 0x2: // 0x02 JNCP
         CIP = 0;
         CPG++;
+        codeCacheReady = false;
         return;
     default:
         // Reserved
@@ -168,54 +174,47 @@ void execHiOpCodeB() {
         if (CIP == 32) {
             CIP = 0;
             CPG++;
-        }        
+        }
+        codeCacheReady = false;
         return;
     }
     if (lowOpCode >= 0x4) {
         codeAddr = getShort();
         switch (lowOpCode) {
         case 0x4: // 0xB4 JMP
-            CIP = codeAddr & 0xFF;
-            CPG = codeAddr >> 8;
+            jumpTo(codeAddr);
             return;
         case 0x5: // 0xB5 CALL
             RA = CPG << 8 | CIP;
-            CIP = codeAddr & 0xFF;
-            CPG = codeAddr >> 8;
+            jumpTo(codeAddr);
             return;
         case 0x6: // 0xB6 EXEC
             RA = CPG << 8 | CIP;
-            CIP = codeAddr & 0xFF;
-            CPG = codeAddr >> 8;
+            jumpTo(codeAddr);
             // swap R and VSC
             R ^= VSC;
             VSC ^= R;
             R ^= VSC;
-            readMessage(VSC, CPG, codePage);
-            loadedCPG = CPG;
+            syncCodePage();
             return;         
         default:  // 0xB7 HARA
-            CIP = codeAddr & 0xFF;
-            CPG = codeAddr >> 8;
+            jumpTo(codeAddr);
             halt;
             return;
         }
     }
     // low opCode is lower than 4
     if (lowOpCode == 0x0) { // 0xB0 RET
-        CIP = RA & 0xFF;
-        CPG = RA >> 8;
+        jumpTo(RA);
         return;
     }
     if (lowOpCode == 0x1) { // 0xB1 RETLIB
-        CIP = RA & 0xFF;
-        CPG = RA >> 8;
+        jumpTo(RA);
         // swap R and VSC
         R ^= VSC;
         VSC ^= R;
         R ^= VSC;
-        readMessage(VSC, CPG, codePage);
-        loadedCPG = CPG;
+        syncCodePage();
         return;
     }
     if (lowOpCode == 0x2) { // 0xB2 SRA
@@ -252,120 +251,142 @@ void execSYS(long func) {
     long *pArg1, *pArg2, *pArg3, *pArg4, *pArg5;
     long arg2;
     pArg1 = getTarget(1);
-    if (func < 0x08) {
+    if (func < 0x07) {
+        if (func < 0x03) {
+            switch (func) {
+            case 0x00: // getTxLoopTimestamp
+                *pArg1 = _counterTimestamp;
+                return;
+            case 0x01: // setTxLoopTimestamp
+                _counterTimestamp = *pArg1;
+                return;
+            default: // 0x02
+                sendBalance(*pArg1);
+                return;
+            }
+        }
         switch (func) {
-        case 0x00:
-            *pArg1 = getNextTx();
-            return;
-        case 0x01: // getTxLoopTimestamp
-            *pArg1 = _counterTimestamp;
-            return;
-        case 0x02: // setTxLoopTimestamp
-            _counterTimestamp = *pArg1;
-            return;
         case 0x03:
-            sendBalance(*pArg1);
-            return;
-        case 0x04:
             *pArg1 = getCurrentBlockheight();
             return;
-        case 0x05:
+        case 0x04:
             *pArg1 = getWeakRandomNumber();
             return;
-        case 0x06:
+        case 0x05:
             // *pArg1 = getCreator();
             *pArg1 = creator;
             return;
-        default:  // 0x07
+        default:  // 0x06
             *pArg1 = getCurrentBalance();
             return;
         }
     }
     pArg2 = getTarget(1);
     arg2 = *pArg2;
-    if (func < 0x0F) {
+    if (func < 0x0E) {
+        if (func < 0x0B) {
+            switch (func) {
+            case 0x08:
+                *pArg1 = getAmount(arg2);
+                return;
+            case 0x09:
+                *pArg1 = getSender(arg2);
+                return;
+            case 0x07:
+                *pArg1 = getBlockheight(arg2);
+                return;
+            default: // 0x0A
+                *pArg1 = getType(arg2);
+                return;
+            }
+        }
         switch (func) {
-        case 0x08:
-            *pArg1 = getBlockheight(arg2);
-            return;
-        case 0x09:
-            *pArg1 = getAmount(arg2);
-            return;
-        case 0x0A:
-            *pArg1 = getSender(arg2);
-            return;
-        case 0x0B:
-            *pArg1 = getType(arg2);
-            return;
         case 0x0C:
-            readAssets(*pArg1, pArg2);
+            sendAmount(*pArg1, arg2);
             return;
         case 0x0D:
-            sendAmount(*pArg1, arg2);
+            sendMessage(pArg1, arg2);
             return;
-        default: // 0x0E
-            sendAmount(*pArg1, arg2);
+        default: // 0x0B:
+            readAssets(*pArg1, pArg2);
             return;
         }
     }
-    if (func < 0x15) {
-        switch (func) {
-        case 0x0F:
+    if (func < 0x14) {
+        // Using lowOpCode to optimize the code
+        switch (lowOpCode) {
+        case 0xE: // func 0x0E
             *pArg1 = getCreatorOf(arg2);
             return;
-        case 0x10:
+        case 0xF: // func 0x1F
             *pArg1 = getCodeHashOf(arg2);
             return;
-        case 0x11:
+        case 0x0: // func 0x10
             *pArg1 = getActivationOf(arg2);
             return;
-        case 0x12:
+        case 0x1: // func 0x11
             *pArg1 = getAssetBalance(arg2);
             return;
-        case 0x13:
+        case 0x2: // func 0x12
             mintAsset(*pArg1, arg2);
             return;
-        default: // 0x14
+        default: // lowOpCode 0x3 :: func 0x13
             *pArg1 = getAssetCirculating(arg2);
             return;
         }
     }
     pArg3 = getTarget(1);
     if (func < 0x1C) {
-        switch (func) {
-        case 0x15:
-            readMessage(*pArg1, arg2, pArg3);
-            return;
-        case 0x16:
-            *pArg1 = getQuantity(arg2, *pArg3);
-            return;
-        case 0x17:
-            sendAmountAndMessage(*pArg1, pArg2, *pArg3);
-            return;
-        case 0x18:
+        if (func < 0x18) {
+        switch (lowOpCode) {
+            case 0x4: // func 0x14
+                txId = getNextTx();
+                if (txId == 0) {
+                    *pArg1 = 0;
+                    *pArg2 = 0;
+                    *pArg3 = 0;
+                    return;
+                }
+                *pArg3 = getAmount(txId);
+                *pArg2 = getSender(txId);
+                *pArg1 = txId;
+                return;
+            case 0x5: // func 0x15
+                readMessage(*pArg1, arg2, pArg3);
+                return;
+            case 0x6: // func 0x16
+                *pArg1 = getQuantity(arg2, *pArg3);
+                return;
+            default: // lowOpCode 0x7 :: func 0x17
+                sendAmountAndMessage(*pArg1, pArg2, *pArg3);
+                return;
+            }
+        }
+        switch (lowOpCode) {
+        case 0x8: // func 0x18
             sendQuantity(*pArg1, arg2, *pArg3);
             return;
-        case 0x19:
+        case 0x9: // func 0x19
             setMapValue(*pArg1, arg2, *pArg3);
             return;
-        case 0x1A:
+        case 0xA: // func 0x1A
             *pArg1 = getMapValue(arg2, *pArg3);
             return;
-        default: // 0x1B
+        default: // lowOpCode 0xB :: func 0x1B
             *pArg1 = getAssetHoldersCount(arg2, *pArg3);
             return;
         }
     }
     pArg4 = getTarget(1);
     if (func < 0x1F) {
-        switch (func) {
-        case 0x1C:
+        switch (lowOpCode) {
+        case 0xC: // func 0x1C
             sendQuantityAndAmount(*pArg1, arg2, *pArg3, *pArg4);
             return;
-        case 0x1D:
+        case 0xD: // func 0x1D
             *pArg1 = getExtMapValue(arg2, *pArg3, *pArg4);
             return;
-        default: // 0x1E
+        default: // lowOpCode 0xE :: func 0x1E
             *pArg1 = issueAsset(arg2, *pArg3, *pArg4);
             return;
         }
@@ -408,19 +429,32 @@ long getSource(long type) {
 }
 
 long getByte() {
-    ensureCodePage();
-    long buffer = codePage[CIP / 8];
-    shift = (CIP % 8) * 8;
+    if (codeCacheReady) {
+        codeCache >>= 8;
+    } else {
+        if (loadedCPG != CPG) {
+            syncCodePage();
+        }
+        codeCache = codePage[CIP / 8];
+        shift = (CIP % 8) * 8;
+        codeCache >>= shift;
+        codeCacheReady = true;
+    }
     CIP++;
     if (CIP == 32) {
         CIP = 0;
         CPG++;
-    }        
-    return (buffer >> shift) & 0xFF;
+    }
+    if (CIP % 8 == 0) {
+        codeCacheReady = false;
+    }
+    return codeCache & 0xFF;
 }
 
 long getShort() {
-    ensureCodePage();
+    if (loadedCPG != CPG) {
+        syncCodePage();
+    }
     shift = (CIP % 8) * 8;
     retVal = codePage[CIP / 8] >> shift;
     CIP += 2;
@@ -429,19 +463,24 @@ long getShort() {
         CPG++;
     }
     if (shift == 56) {
-        ensureCodePage();
+        if (loadedCPG != CPG) {
+            syncCodePage();
+        }
         retVal |= codePage[CIP / 8] << 8;
     }
     retVal &= 0xFFFF;
     if (retVal > 0x7FFF) {
         retVal -= 0x10000;
     }
+    codeCacheReady = false;
     return retVal;
 }
 
 long getLong() {
-    ensureCodePage();
-    shift =  (CIP % 8) * 8;
+    if (loadedCPG != CPG) {
+        syncCodePage();
+    }
+    shift = (CIP % 8) * 8;
     retVal = codePage[CIP / 8] >> shift;
     CIP += 8;
     if (CIP >= 32) {
@@ -449,9 +488,12 @@ long getLong() {
         CPG++;
     }
     if (shift) {
-        ensureCodePage();
+        if (loadedCPG != CPG) {
+            syncCodePage();
+        }
         retVal |= codePage[CIP / 8] << (64 - shift);
     }
+    codeCacheReady = false;
     return retVal;
 }
 
@@ -470,13 +512,17 @@ void advanceOffset(long offset) {
         CPG++;
         CIP -= 32;
     }
+    codeCacheReady = false;
 }
 
-void ensureCodePage() {
-    if (loadedCPG == CPG) {
-        return;
-    }
+void syncCodePage() {
     readMessage(VSC, CPG, codePage);
     loadedCPG = CPG;
+}
+
+void jumpTo(long codeAddr) {
+    CIP = codeAddr & 0xFF;
+    CPG = codeAddr >> 8;
+    codeCacheReady = false;
 }
 ```
