@@ -42,6 +42,8 @@ long CPG; // Current Page (0 to 30)
 long loadedCPG;
 long codePage[4]; // Current code page
 long opCode, hiOpCode, lowOpCode;
+long *pArg1, *pArg2, *pArg3, *pArg4, *pArg5;
+long arg1, arg2;
 long codeCache; //instruction cache
 long codeCacheReady; //instruction cache
 long codeAddr;
@@ -51,12 +53,20 @@ long shift, retVal; // getByte, getShort and getLong
 long txId; // Current transaction ID
 long creator = getCreator();
 
+struct STATS {
+    long running,
+        steps,
+        programs;
+} stats;
+
 void main () {
     while ((txId = getNextTx()) != 0) {
         // get details
         if (getSender(txId) != creator) {
             continue;
         }
+        stats.running = true;
+        ++stats.programs;
         VSC = txId;
         CIP = 0;
         CPG = 0;
@@ -67,7 +77,9 @@ void main () {
             lowOpCode = opCode & 0xF;
             hiOpCode = opCode >> 4;
             executeInstruction();
+            ++stats.steps;
         } while (opCode);
+        stats.running = false;
     }
 }
 
@@ -115,43 +127,43 @@ void execHiOpCode0() {
 }
 
 void execHiOpCode1toA() {
-    long *pTarget = getTarget((opCode >> 2) & 0x03);
-    long source = getSource(opCode & 0x03);
+    *pArg1 = getTarget((opCode >> 2) & 0x03);
+    arg2 = getSource(opCode & 0x03);
     
     if (hiOpCode < 0x6) {
         switch (hiOpCode) {
         case 0x1: // 0x10 SET
-            *pTarget = source;
+            *pArg1 = arg2;
             return;
         case 0x2: // 0x20 ADD
-            *pTarget += source;
+            *pArg1 += arg2;
             return;
         case 0x3: // 0x30 SUB
-            *pTarget -= source;
+            *pArg1 -= arg2;
             return;
         case 0x4: // 0x40 MUL
-            *pTarget *= source;
+            *pArg1 *= arg2;
             return;
         default:  // 0x50 DIV
-            *pTarget /= source;
+            *pArg1 /= arg2;
             return;
         }
     }
     switch (hiOpCode) {
     case 0x6: // 0x60 OR
-        *pTarget |= source;
+        *pArg1 |= arg2;
         return;
     case 0x7: // 0x70 XOR
-        *pTarget ^= source;
+        *pArg1 ^= arg2;
         return;
     case 0x8: // 0x80 SHL
-        *pTarget <<= source;
+        *pArg1 <<= arg2;
         return;
     case 0x9: // 0x90 SHR
-        *pTarget >>= source;
+        *pArg1 >>= arg2;
         return;
     default:  // 0xA0 AND
-        *pTarget &= source;
+        *pArg1 &= arg2;
         return;
     }
 }
@@ -232,24 +244,22 @@ void execHiOpCodeF(void) {
         return;
     }
 
-    long *pTarget = getTarget(opCode & 0x03);
+    *pArg1 = getTarget(opCode & 0x03);
     if (lowOpCode >= 0xC) { // 0xFC SET64
-        *pTarget = getLong();
+        *pArg1 = getLong();
         return;
     }
     if (lowOpCode >= 0x8) { // 0xF8 SET16
-        *pTarget = getShort();
+        *pArg1 = getShort();
         return;
     }
     // 0xF4 NOT
-    *pTarget = ~*pTarget;
+    *pArg1 = ~*pArg1;
     return;
 }
 
 // SYS matches 0xC and 0xD hiOpCode
 void execSYS(long func) {
-    long *pArg1, *pArg2, *pArg3, *pArg4, *pArg5;
-    long arg2;
     pArg1 = getTarget(1);
     if (func < 0x07) {
         if (func < 0x03) {
@@ -272,8 +282,7 @@ void execSYS(long func) {
         case 0x04:
             *pArg1 = getWeakRandomNumber();
             return;
-        case 0x05:
-            // *pArg1 = getCreator();
+        case 0x05: // getCreator
             *pArg1 = creator;
             return;
         default:  // 0x06
@@ -339,7 +348,7 @@ void execSYS(long func) {
     if (func < 0x1C) {
         if (func < 0x18) {
         switch (lowOpCode) {
-            case 0x4: // func 0x14
+            case 0x4: // func 0x14 getNextTxDetails
                 txId = getNextTx();
                 if (txId == 0) {
                     *pArg1 = 0;
@@ -394,20 +403,18 @@ void execSYS(long func) {
     // Only 0x1F remaining
     pArg5 = getTarget(1);
     distributeToHolders(*pArg1, arg2, *pArg3, *pArg4, *pArg5);
-    return;
 }
 
 long *getTarget(long type) {
     if (type == 0x00) { // Register
         return &R;
     }
-    long b = getByte();
     if (type == 0x01) { // Memory
-        return VMM + b;
+        return VMM + getByte();
     }
     // 0x02 is not  used
     // type is 0x03 Content Of Memory
-    return VMM + (VMM[b] & 0xFF);
+    return VMM + (VMM[getByte()] & 0xFF);
 }
 
 long getSource(long type) {
