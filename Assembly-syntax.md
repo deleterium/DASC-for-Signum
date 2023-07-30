@@ -13,7 +13,13 @@ Lines with a word that includes only simple chars, numbers and underscore follow
 
 ## Instructions
 
-Enter a instruction name and, if the instruction needs arguments, place them separated by comas.
+Enter a instruction name and, if the instruction needs arguments, place them separated by comas. Instructions are case insensitive.
+
+## Values format
+
+ * Decimal: only numbers
+ * Hexadecimal: must start with '0x' and contain numbers or letters a, b, c, d, e and f.
+ * Strings: any chars enclosed with double or single quotes. They will be converted to utf-8 bytes. 
 
 ## Compiler directives
 

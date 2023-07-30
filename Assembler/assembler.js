@@ -11,43 +11,43 @@ function assembler(assembly_source) {
             { op_code: 0x100, name: "blank", size:0, args_type: "",regex: /^\s*$/},
             { op_code: 0x101, name: "label", size:0, args_type: "",regex: /^\s*(\w+):\s*$/},
             { op_code: 0x102, name: "adr", size:0, args_type: "",regex: /^\s*.adr\s+(\w+)\s+(\w+)\s*$/},
-            { op_code: 0x103, name: "define", size:0, args_type: "",regex: /^\s*.define\s+(\w+)\s+(\w+)\s*$/},
+            { op_code: 0x103, name: "define", size:0, args_type: "",regex: /^\s*.define\s+(\w+)\s+([*-]?[\w"']+)\s*$/},
             { op_code: 0x104, name: "functionInfo", size:0, args_type: "",regex: /^\s*.functionInfo\s+(\w+)(.*)$/},
             { op_code: 0x105, name: "startingAddress", size:0, args_type: "",regex: /^\s*.startingAddress\s+(\w+)\s*$/},
             { op_code: 0x02, name: "alignCodePage", size:1, args_type: "",regex: /^\s*.alignCodePage\s*$/},
-            { op_code: 0x00, name: "RST", size: 1, args_type: "",regex: /^\s*RST\s*$/},
-            { op_code: 0x01, name: "NOP", size: 1, args_type: "",regex: /^\s*NOP\s*$/},
-            { op_code: 0x02, name: "JNCP", size: 1, args_type: "",regex: /^\s*JNCP\s*$/},
-            { op_code: 0x10, name: "SET", size:1, args_type: "US", regex: /^\s*SET\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x20, name: "ADD", size:1, args_type: "US", regex: /^\s*ADD\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x30, name: "SUB", size:1, args_type: "US", regex: /^\s*SUB\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x40, name: "MUL", size:1, args_type: "US", regex: /^\s*MUL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x50, name: "DIV", size:1, args_type: "US", regex: /^\s*DIV\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x60, name: "OR",size:1, args_type: "US", regex: /^\s*OR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x70, name: "XOR", size:1, args_type: "US", regex: /^\s*XOR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x80, name: "SHL", size:1, args_type: "US", regex: /^\s*SHL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0x90, name: "SHR", size:1, args_type: "US", regex: /^\s*SHR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0xA0, name: "AND", size:1, args_type: "US", regex: /^\s*AND\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?\w+)\s*$/},
-            { op_code: 0xB0, name: "RET", size:1, args_type: "", regex: /^\s*RET\s*$/},
-            { op_code: 0xB1, name: "RETLIB", size:1, args_type: "", regex: /^\s*RETLIB\s*$/},
-            { op_code: 0xB2, name: "SRA", size:1, args_type: "", regex: /^\s*SRA\s*$/},
-            { op_code: 0xB3, name: "LRA", size:1, args_type: "", regex: /^\s*LRA\s*$/},
-            { op_code: 0xB4, name: "JMP", size:1, args_type: "J", regex: /^\s*JMP\s+(\w+)\s*$/},
-            { op_code: 0xB5, name: "CALL", size:1, args_type: "J", regex: /^\s*CALL\s+(\w+)\s*$/},
-            { op_code: 0xB6, name: "EXEC", size:1, args_type: "s", regex: /^\s*EXEC\s+(\w+)\s*$/},
-            { op_code: 0xB7, name: "HARA", size:1, args_type: "J", regex: /^\s*HARA\s+(\w+)\s*$/},
-            { op_code: 0xB8, name: "BZ", size:1, args_type: "B", regex: /^\s*BZ\s+(\w+)\s*$/},
-            { op_code: 0xB9, name: "BNZ", size:1, args_type: "B", regex: /^\s*BNZ\s+(\w+)\s*$/},
-            { op_code: 0xBA, name: "BGZ", size:1, args_type: "B", regex: /^\s*BGZ\s+(\w+)\s*$/},
-            { op_code: 0xBB, name: "BLZ", size:1, args_type: "B", regex: /^\s*BLZ\s+(\w+)\s*$/},
-            { op_code: 0xBC, name: "BGEZ", size:1, args_type: "B", regex: /^\s*BGEZ\s+(\w+)\s*$/},
-            { op_code: 0xBD, name: "BLEZ", size:1, args_type: "B", regex: /^\s*BLEZ\s+(\w+)\s*$/},
-            { op_code: 0xBE, name: "BA", size:1, args_type: "B", regex: /^\s*BA\s+(\w+)\s*$/},
-            { op_code: 0xC0, name: "SYS", size:1, args_type: "F", regex: /^\s*SYS\s+(\w+)(.*)$/},
-            { op_code: 0xF0, name: "SLEEP", size: 1, args_type: "S",regex: /^\s*SLEEP\s+(\$|[*]?\w+)\s*$/},
-            { op_code: 0xF4, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+(\$|[*]?\w+)\s*$/},
-            { op_code: 0xF8, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/},
-            { op_code: 0xFC, name: "SET64", size:1, args_type: "Tl", regex: /^\s*SET64\s+(\$|[*]?\w+)\s*,\s*(-?\w+)\s*$/}
+            { op_code: 0x00, name: "RST", size: 1, args_type: "",regex: /^\s*RST\s*$/i},
+            { op_code: 0x01, name: "NOP", size: 1, args_type: "",regex: /^\s*NOP\s*$/i},
+            { op_code: 0x02, name: "JNCP", size: 1, args_type: "",regex: /^\s*JNCP\s*$/i},
+            { op_code: 0x10, name: "SET", size:1, args_type: "US", regex: /^\s*SET\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x20, name: "ADD", size:1, args_type: "US", regex: /^\s*ADD\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x30, name: "SUB", size:1, args_type: "US", regex: /^\s*SUB\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x40, name: "MUL", size:1, args_type: "US", regex: /^\s*MUL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x50, name: "DIV", size:1, args_type: "US", regex: /^\s*DIV\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x60, name: "OR",size:1, args_type: "US", regex: /^\s*OR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x70, name: "XOR", size:1, args_type: "US", regex: /^\s*XOR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x80, name: "SHL", size:1, args_type: "US", regex: /^\s*SHL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x90, name: "SHR", size:1, args_type: "US", regex: /^\s*SHR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0xA0, name: "AND", size:1, args_type: "US", regex: /^\s*AND\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0xB0, name: "RET", size:1, args_type: "", regex: /^\s*RET\s*$/i},
+            { op_code: 0xB1, name: "RETLIB", size:1, args_type: "", regex: /^\s*RETLIB\s*$/i},
+            { op_code: 0xB2, name: "SRA", size:1, args_type: "", regex: /^\s*SRA\s*$/i},
+            { op_code: 0xB3, name: "LRA", size:1, args_type: "", regex: /^\s*LRA\s*$/i},
+            { op_code: 0xB4, name: "JMP", size:1, args_type: "J", regex: /^\s*JMP\s+(\w+)\s*$/i},
+            { op_code: 0xB5, name: "CALL", size:1, args_type: "J", regex: /^\s*CALL\s+(\w+)\s*$/i},
+            { op_code: 0xB6, name: "EXEC", size:1, args_type: "s", regex: /^\s*EXEC\s+(\w+)\s*$/i},
+            { op_code: 0xB7, name: "HARA", size:1, args_type: "J", regex: /^\s*HARA\s+(\w+)\s*$/i},
+            { op_code: 0xB8, name: "BZ", size:1, args_type: "B", regex: /^\s*BZ\s+(\w+)\s*$/i},
+            { op_code: 0xB9, name: "BNZ", size:1, args_type: "B", regex: /^\s*BNZ\s+(\w+)\s*$/i},
+            { op_code: 0xBA, name: "BGZ", size:1, args_type: "B", regex: /^\s*BGZ\s+(\w+)\s*$/i},
+            { op_code: 0xBB, name: "BLZ", size:1, args_type: "B", regex: /^\s*BLZ\s+(\w+)\s*$/i},
+            { op_code: 0xBC, name: "BGEZ", size:1, args_type: "B", regex: /^\s*BGEZ\s+(\w+)\s*$/i},
+            { op_code: 0xBD, name: "BLEZ", size:1, args_type: "B", regex: /^\s*BLEZ\s+(\w+)\s*$/i},
+            { op_code: 0xBE, name: "BA", size:1, args_type: "B", regex: /^\s*BA\s+(\w+)\s*$/i},
+            { op_code: 0xC0, name: "SYS", size:1, args_type: "F", regex: /^\s*SYS\s+(\w+)(.*)$/i},
+            { op_code: 0xF0, name: "SLEEP", size: 1, args_type: "S",regex: /^\s*SLEEP\s+(\$|[*]?[\w"']+)\s*$/i},
+            { op_code: 0xF4, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+(\$|[*]?\w+)\s*$/i},
+            { op_code: 0xF8, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*(-?[\w"']+)\s*$/i},
+            { op_code: 0xFC, name: "SET64", size:1, args_type: "Tl", regex: /^\s*SET64\s+(\$|[*]?\w+)\s*,\s*(-?[\w"']+)\s*$/i}
         ],
         sys_code_table: [
             { name: "getTxLoopTimestamp", func_code: 0x00, args: 1 },
@@ -218,7 +218,7 @@ function assembler(assembly_source) {
             case "T":
             case "U":
             case "S":
-                let varName = defineOrValue(parts[i+1]);
+                let varName = decodeString(defineOrValue(parts[i+1]));
                 let bitParam;
                 if (varName === "$") {
                     // Register
@@ -246,12 +246,12 @@ function assembler(assembly_source) {
                 continue;
             case "l":
                 CodeObj.size += 8;
-                CodeObj.content.push(adjustBits(parts[i+1], 64, currentLine));
+                CodeObj.content.push(adjustBits(decodeString(defineOrValue(parts[i+1])), 64, currentLine));
                 CodeObj.content_type.push(type);
                 continue;
             case "s":
                 CodeObj.size += 2;
-                CodeObj.content.push(adjustBits(parts[i+1], 16, currentLine));
+                CodeObj.content.push(adjustBits(decodeString(defineOrValue(parts[i+1])), 16, currentLine));
                 CodeObj.content_type.push(type);
                 continue;
             case "B": //branch offset will be processed later
@@ -288,7 +288,6 @@ function assembler(assembly_source) {
 
     function adjustBits(str, bits, currentLine) {
         bits = BigInt(bits);
-        str = defineOrValue(str);
         if (isNaN(str)) {
             throw new TypeError(`Error at line ${currentLine}: Invalid number value.`);
         }
@@ -300,6 +299,18 @@ function assembler(assembly_source) {
             val += 1n << (bits);
         }
         return val
+    }
+
+    // If it is a quoted string, converts it to decimal number
+    function decodeString(str) {
+        if (str.length > 2 &&
+            (str.startsWith('"') && str.endsWith('"')) ||
+            (str.startsWith("'") && str.endsWith("'"))) {
+            const textEncoder = new TextEncoder();
+            const encoded = textEncoder.encode(str.slice(1,-1));
+            return encoded.reduceRight((accumulator, currentValue) => (accumulator << 8n) + BigInt(currentValue), 0n).toString(10)
+        }
+        return str;
     }
 
     function defineOrValue(val) {
@@ -441,7 +452,7 @@ function assembler(assembly_source) {
                 CodeObj.hexstring +
                 " # ".padStart(23 - CodeObj.hexstring.length) + CodeObj.source + "\n";
         } else {
-            AsmObj.asmCode += CodeObj.source + "\n"
+            AsmObj.asmCode += "  " + CodeObj.source + "\n"
         }
         AsmObj.bytecode += CodeObj.hexstring;
     }
