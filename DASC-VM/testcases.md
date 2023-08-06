@@ -227,8 +227,8 @@ Compile and send the program to any account. Let's assume the transaction was 12
 .functionInfo fn_modAddValues 50-52
 
 # Entry point
-    SET64 m0, 2555555
-    SET16 m1, -4444
+    SET64 m0, 2555554
+    SET16 m1, -4443
     SET arg1, m0
     SET arg2, m1
     SET64 $, modAddLib
@@ -236,4 +236,4 @@ Compile and send the program to any account. Let's assume the transaction was 12
     SET m2, retVal
     RST
 ```
-Expect m2=2559999.
+Expect m2=2559997.
