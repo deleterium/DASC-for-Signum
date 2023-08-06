@@ -3,11 +3,11 @@
 This projects aims to create an architecture that will be executed by a Smart Contract in Signum blockchain. This contract will act as a Virtual Machine to execute contracts sent as messages to the VM by the VM creator.
 
 ## Current status
-* Overall: **beta**
-* Architecture: beta
-* Assembly syntax: beta
-* Assembler: beta
-* VM Contract: beta
+* Overall: **Revision 0**
+* Architecture: Revision 0
+* Assembly syntax: Revision 0
+* Assembler: Revision 0
+* VM Contract: Revision 0
 
 ## VM Smart Contract source code
 
