@@ -4,7 +4,7 @@ This projects aims to create an architecture that will be executed by a Smart Co
 
 ## Current status
 * Overall: **Revision 0**
-* Architecture: Revision 0
+* Architecture: Revision 1
 * Assembly syntax: Revision 0
 * Assembler: Revision 0
 * VM Contract: Revision 0
@@ -15,24 +15,59 @@ Go to [VM source code](./DASC-VM/README.md).
 
 ## Features
 * 2 registers (64-bit)
-* 256 memory variables (64-bit)
-* Maximum program size 992 bytes. It is limited by Signum maximum message size (1000 bytes)
-* Programs can call other programs.
+* Program initializable size up to 992 bytes. It is limited by Signum maximum message size (1000 bytes)
+* Maximum program size in memory is 2048 bytes.
 * No stack memory.
+* Program loaded at startup.
 
 ## Registers
 There are two registers.
 * The general use register **R** will be used by branches and library instructions. It is a 64-bit variable following the same weird behavior of Signum AT variables.
-* The return address register **RA**, that will be set when calling functions in same program or libraries. It is a short (two-byte) value.
+* The return address register **RA**, that will be set when calling functions. It is a short (two-byte) value.
 
 ## Memory
-The total memory available for the programs is 256 addresses. Each address stores a 64-bit value. It is impossible to overflow the memory or access the VM program memory.
+The total memory available for the programs is 2048 bytes. Variables are 64-bit value. It is impossible for the program to overflow its memory into VM memory, or access the VM program memory.
+
+## Pages
+Due to the nature of smart contracts in Signum blockchain, it is easier to read transaction messages in group of 32 bytes, or 4 long values. This batch will be called a page. The program will be padded to fit a integer number of pages.
 
 ## Program
-A smart contract in Signum blockchain reads each incoming message in batches of 32 bytes. Each batch will be a program code page. The instruction pointer will be always in this range from 0 to 31 in a given code page. The code pages will be limited from 0 to 30 because maximum message size in the blockchain is 1000 bytes, but the smart contracts can access only the first 992 bytes due to the batch reading behavior. Any access outside these limits will lead to program end, because reading these locations always returns zero.
+The program:
+```
+|--------| -> End of memory (offset 2047)
+|        |
+|  Free  |   Free memory
+|        |
+|--------| -> End of instructions
+|  Code  |    Code writen during load
+|--------| -> Entry point: Start of instructions
+|   NID  |    NID cleared on request
+|--------| -> Start of Non-initializable data
+|   ID   |    ID written during load
+|--------| -> Start of Initializable Data (ID)
+| Header | -> Header (offset 0)
+```
+
+1. Header (8 bytes): Information how to load the program.
+    * First four bytes are 'VSC1' meaning Very Smart Contract on DASC rev. 1.
+    * 5th byte is the reserved ID size in pages. Mind the header, first page can have only three variables.
+    * 6th byte is the reserved NID size in pages. Mind the header, first page can have only three variables including the ID variables.
+    * 7th byte is the total program size in pages. If size is zero, then it is a green VSC (check specific topic). It can be used in program to calculate offset for dinamically memory or extended code.
+    * 8th byte is option to clear NID. Zero for not, or other value for the number of pages to be cleared after ID. (Maybe future expansion can use this as bitfield for other properties)
+2. Initializable data, or ID: Will hold data that can be initialized by the setting up message. Each variable is a long (64-bit).
+3. Non-initializable data, or NID: space reserved for the variables declared in the program, but that cannot be set with custom values during program loading. The values can be leftovers from previous programs, or can be cleared on startup. Each variable is a long (64-bit).
+4. Machine code: The instructions for the program execution. It starts at the start of one page, or just after the header if ID and NID are zero. 
+5. Free memory: Remaining space until 2048 bytes can be used dynamicaly. It can not be set during initialization.
+
+The program can edit any part of memory, so it can modify itself. It can also jump execution anywhere, but if instruction pointer is outside program boundaries, the VM will terminate program execution.
+
+Signum API calls were simplified. The API follows the same names from SmartC built-in functions. It is a huge simplification from Signum assembly code.
+
+## Green VSC
+A green very smart contract is a program that will point to other transaction that has the actual program. It is intended to avoid data duplication in blockchain. The ID consists in only one long value that is the transaction containing the VSC to be loaded.
 
 ## Program addresses
-The calls and jumps will be referenced by a short value where the least significant byte (LSB) is the instruction pointer and the most significant byte (MSB) indicating the program code page.
+The calls and jumps will be referenced by a short value indicating the location of the next instruction from the start of program. Branches will use offset location.
 
 ## Instructions
 Instruction base size is 1 byte. The base instruction will be called **opCode**. Some opCodes have bit arguments inside the opcode, they will be called 'params', so the opCode will be formed by  a **base opCode** and one or more **bit params**. Some opCodes will need additional bytes, these will be called 'arguments'.
@@ -102,7 +137,7 @@ The following table shows the type of arguments that can be required by opCodes:
 | --- | --- | --- | --- | --- | --- | --- |
 | General | RST |  |  | 0x00 | 0x00 | Ends the program |
 | General | NOP |  |  | 0x01 | 0x01 | No operation (padding) |
-| General | JNCP |  |  | 0x02 | 0x02 | Jumps to next code page |
+| General | RESERVED |  |  | 0x02 | 0x02-0x0F | Not used |
 | General | SRA |  |  | 0xB2 | 0xB2 | R = RA |
 | General | LRA |  |  | 0xB3 | 0xB3 | RA = R |
 | General | SLEEP | src¹ |  | 0xF0 | 0xF0-0xF3 | Stops contract execution and resumes after source blocks |
@@ -126,11 +161,11 @@ The following table shows the type of arguments that can be required by opCodes:
 | Branch | BGEZ | brch | offset | 0xB8 | 0xBC | Jump to offset if R >= 0 |
 | Branch | BLEZ | brch | offset | 0xB8 | 0xBD | Jump to offset if R <= 0 |
 | Branch | BA | brch | offset | 0xB8 | 0xBE | Jump always. Short form for JMP if label is reachable by offset. |
-| Jump | RET |  |  | 0xB0 | 0xB0 | Return to RA address in same program |
-| Jump | RETLIB |  |  | 0xB1 | 0xB1 | Return to RA address in program stored in R |
+| Jump | RET |  |  | 0xB0 | 0xB0 | Return to address in RA |
+| Jump | JMPR |  |  | 0xB1 | 0xB1 | Jumps to to address in R |
 | Jump | JMP |  | short | 0xB4 | 0xB4 | Jumps to the argument address |
 | Jump | CALL |  | short | 0xB5 | 0xB5 | Call the function at argument address, storing the returning address in RA |
-| Jump | EXEC |  | short | 0xB6 | 0xB6 | Call the function at argument address in the program at R, storing the returning address in RA. After call the R will be set to the caller program. |
+| Jump | RESERVED |  | short | 0xB6 | 0xB6 | Not used |
 | Jump | HARA |  | short | 0xB7 | 0xB7 | **H**alt program **A**nd **R**estart **A**t argument address on next activation. |
 | System | SYS | func | N*memAdr | 0xC0 | 0xC0-0xDF | Number of arguments is dependent of func type. |
 | Reserved |  |  |  |  | 0xE0-0xEF |  |
