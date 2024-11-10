@@ -1,11 +1,12 @@
 #program name DASCVM
-#program description VM contract to run DASC program. Revision 0.
+#program description VM contract to run DASC program. Revision 1.
 #program activationAmount 1.5
 
 #pragma maxConstVars 10
-#pragma version 2.1
+#pragma version 2.3
 #pragma verboseAssembly
 #pragma optimizationLevel 3
+#pragma maxAuxVars 5
 
 const long n11 = 11, n12 = 12, n13 = 13, n14=14, n15=15;
 const long n32 = 32, n127 = 127, n255 = 255;
@@ -14,19 +15,10 @@ long RA; // The Return Address
 long R; // The Register
 long VMM[256]; // Virtual Machine Memory
 
-long VSC; // Current Very Smart Contract
-long CIP; // Current Instruction Pointer (0 to 31)
-long CPG; // Current Page (0 to 30)
-long loadedCPG;
-long codePage[4]; // Current code page
+long CIP; // Current Instruction Pointer (0 to 2048)
 long opCode, hiOpCode, lowOpCode;
 long *pArg1, *pArg2, *pArg3, *pArg4, *pArg5;
 long arg1, arg2;
-long codeCache; //instruction cache
-long codeCacheReady; //instruction cache
-long codeAddr;
-
-long shift, retVal; // getByte, getShort and getLong
 
 long txId; // Current transaction ID
 long creator = getCreator();
@@ -37,20 +29,37 @@ struct STATS {
         programs;
 } stats;
 
+struct HEADER {
+    long magic,
+        IDpages,
+        NIDpages,
+        programSize,
+        clearNID;
+} header;
+
 void main () {
     while ((txId = getNextTx()) != 0) {
         // get details
         if (getSender(txId) != creator) {
             continue;
         }
+        if (loadProgram() != 0) {
+            continue;
+        }
         stats.running = true;
         ++stats.programs;
-        VSC = txId;
-        CIP = 0;
-        CPG = 0;
-        loadedCPG = -1;
-        codeCacheReady = false;
+        if (header.NIDpages + header.IDpages == 0) {
+            CIP = 8;
+        } else {
+            CIP = 32 * (header.NIDpages + header.IDpages);
+        }
+        R = 0;
+        RA = 0;
         do {
+            if (CIP & 0xfffffffffffff800) {
+                // Reset VSC if CIP < 0 or CIP > 2047
+                break;
+            }
             opCode = getByte();
             lowOpCode = opCode & 0xF;
             hiOpCode = opCode >> 4;
@@ -61,11 +70,56 @@ void main () {
     }
 }
 
+inline void processRawHeader(void) {
+    register long rawHeader = VMM[0];
+    header.magic = rawHeader & 0xFFFFFFFF;
+    rawHeader >>= 32;
+    header.IDpages = rawHeader & 0xFF;
+    rawHeader >>= 8;
+    header.NIDpages = rawHeader & 0xFF;
+    rawHeader >>= 8;
+    header.programSize = rawHeader & 0xFF;
+    rawHeader >>= 8;
+    header.clearNID = rawHeader;
+}
+
+long loadProgram(void) {
+    readMessage(txId, 0, VMM);
+    processRawHeader();
+    if (header.magic != "VSC1") {
+        return 1;
+    }
+    if (header.programSize == 0) {
+        txId = VMM[1];
+        return loadProgram();
+    }
+    register long programPage = 1, messagePage = 1;
+    for (; programPage < header.IDpages; programPage++, messagePage++) {
+        readMessage(txId, programPage, VMM + 4 * messagePage);
+    }
+    if (header.clearNID) {
+        register long end = (header.IDpages + header.NIDpages) * 4;
+        register long vmmIdx = 4 * programPage;
+        while (vmmIdx < end) {
+            VMM[vmmIdx] = 0; vmmIdx++;
+            VMM[vmmIdx] = 0; vmmIdx++;
+            VMM[vmmIdx] = 0; vmmIdx++;
+            VMM[vmmIdx] = 0; vmmIdx++;
+        }
+    }
+    programPage = header.IDpages + header.NIDpages;
+    for (; programPage < header.programSize; programPage++, messagePage++) {
+        readMessage(txId, messagePage, VMM + 4* programPage);
+    }
+    return 0;
+}
 
 void executeInstruction(void) {
     if (hiOpCode < 0xB) {
         if (hiOpCode == 0x0) {
-            execHiOpCode0();
+            // 0x00 RST
+            // 0x01 NOP
+            // 0x02 to 0x0F Reserved
             return;
         }
         // hiOpCode <= 0xA)
@@ -86,22 +140,6 @@ void executeInstruction(void) {
         return;
     }
     // matches reserved 0xE hiOpCode
-}
-
-void execHiOpCode0() {
-    switch (lowOpCode) {
-    case 0x0: // 0x00 RST
-    case 0x1: // 0x01 NOP
-        return;
-    case 0x2: // 0x02 JNCP
-        CIP = 0;
-        CPG++;
-        codeCacheReady = false;
-        return;
-    default:
-        // Reserved
-        return;
-    }
 }
 
 void execHiOpCode1toA() {
@@ -157,54 +195,42 @@ void execHiOpCodeB() {
             (brch == 0x4 && R >= 0) ||
             (brch == 0x5 && R <= 0) ||
             (brch == 0x6)) {
-            advanceOffset(getByte());
+            // advanceOffset
+            register long offset = getByte();
+            if (offset > 0x7F) {
+                offset -= 0x100;
+            }
+            CIP += offset;
             return;
         }
         CIP++;
-        if (CIP == 32) {
-            CIP = 0;
-            CPG++;
-        }
-        codeCacheReady = false;
         return;
     }
     if (lowOpCode >= 0x4) {
-        codeAddr = getShort();
+        register long codeAddr = getShort();
         switch (lowOpCode) {
         case 0x4: // 0xB4 JMP
-            jumpTo(codeAddr);
+            CIP = codeAddr;
             return;
         case 0x5: // 0xB5 CALL
-            RA = CPG << 8 | CIP;
-            jumpTo(codeAddr);
+            RA = CIP;
+            CIP = codeAddr;
             return;
-        case 0x6: // 0xB6 EXEC
-            RA = CPG << 8 | CIP;
-            jumpTo(codeAddr);
-            // swap R and VSC
-            R ^= VSC;
-            VSC ^= R;
-            R ^= VSC;
-            syncCodePage();
+        case 0x6: // 0xB6 Reserved
             return;         
         default:  // 0xB7 HARA
-            jumpTo(codeAddr);
+            CIP = codeAddr;
             halt;
             return;
         }
     }
     // low opCode is lower than 4
     if (lowOpCode == 0x0) { // 0xB0 RET
-        jumpTo(RA);
+        CIP = RA;
         return;
     }
-    if (lowOpCode == 0x1) { // 0xB1 RETLIB
-        jumpTo(RA);
-        // swap R and VSC
-        R ^= VSC;
-        VSC ^= R;
-        R ^= VSC;
-        syncCodePage();
+    if (lowOpCode == 0x1) { // 0xB1 JMPR
+        CIP = R;
         return;
     }
     if (lowOpCode == 0x2) { // 0xB2 SRA
@@ -399,7 +425,7 @@ long getSource(long type) {
     if (type == 0x00) { // Register
         return R;
     }
-    long b = getByte();
+    register long b = getByte();
     switch (type) {
     case 0x01: // Memory
         return VMM[b];
@@ -413,100 +439,33 @@ long getSource(long type) {
     }
 }
 
-long getByte() {
-    if (codeCacheReady) {
-        codeCache >>= 8;
-    } else {
-        if (loadedCPG != CPG) {
-            syncCodePage();
-        }
-        codeCache = codePage[CIP / 8];
-        shift = (CIP % 8) * 8;
-        codeCache >>= shift;
-        codeCacheReady = true;
-    }
+long getByte(void) {
+    register long codeCache = VMM[CIP / 8];
+    codeCache >>= (CIP % 8) * 8;
     CIP++;
-    if (CIP == 32) {
-        CIP = 0;
-        CPG++;
-    }
-    if (CIP % 8 == 0) {
-        codeCacheReady = false;
-    }
     return codeCache & 0xFF;
 }
 
-long getShort() {
-    if (loadedCPG != CPG) {
-        syncCodePage();
-    }
-    shift = (CIP % 8) * 8;
-    retVal = codePage[CIP / 8] >> shift;
+long getShort(void) {
+    register long shift = (CIP % 8) * 8;
+    register long retVal = VMM[CIP / 8] >> shift;
     CIP += 2;
-    if (CIP >= 32) {
-        CIP %= 32;
-        CPG++;
-    }
     if (shift == 56) {
-        if (loadedCPG != CPG) {
-            syncCodePage();
-        }
-        retVal |= codePage[CIP / 8] << 8;
+        retVal |= VMM[CIP / 8] << 8;
     }
     retVal &= 0xFFFF;
     if (retVal > 0x7FFF) {
         retVal -= 0x10000;
     }
-    codeCacheReady = false;
     return retVal;
 }
 
-long getLong() {
-    if (loadedCPG != CPG) {
-        syncCodePage();
-    }
-    shift = (CIP % 8) * 8;
-    retVal = codePage[CIP / 8] >> shift;
+long getLong(void) {
+    register long shift = (CIP % 8) * 8;
+    register long retVal = VMM[CIP / 8] >> shift;
     CIP += 8;
-    if (CIP >= 32) {
-        CIP %= 32;
-        CPG++;
-    }
     if (shift) {
-        if (loadedCPG != CPG) {
-            syncCodePage();
-        }
-        retVal |= codePage[CIP / 8] << (64 - shift);
+        retVal |= VMM[CIP / 8] << (64 - shift);
     }
-    codeCacheReady = false;
     return retVal;
-}
-
-// Advances CIP and CPG by an offset between -128 and +127.
-void advanceOffset(long offset) {
-    if (offset > 0x7F) {
-        offset -= 0x100;
-    }
-    CPG += offset / 32;
-    CIP += offset % 32;
-    if (CIP < 0) {
-        CPG--;
-        CIP += 32;
-    }
-    if (CIP >= 32) {
-        CPG++;
-        CIP -= 32;
-    }
-    codeCacheReady = false;
-}
-
-void syncCodePage() {
-    readMessage(VSC, CPG, codePage);
-    loadedCPG = CPG;
-}
-
-void jumpTo(long codeAddr) {
-    CIP = codeAddr & 0xFF;
-    CPG = codeAddr >> 8;
-    codeCacheReady = false;
 }
