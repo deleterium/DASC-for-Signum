@@ -1,39 +1,72 @@
 # Test cases for DASC VM contract
 
+## data section
+```
+.data
+   a 1
+   b -1
+   c 0x02
+   d  "abc" 
+   e[2] 0
+   f[4]  "012345670123456701234567abcdefgh" 
+   example[3] [ 1823525992471050800  , 0xfede, "auxiliar" ]
+```
+
+## bss section
+```
+.data
+.zeroall
+   a
+   b[2]
+```
+
 ## SET (immediate), SET16 and SET64
 ```
-SET m0, 0
-SET m1, 1
-SET m2, -1
-SET16 m3, 4386
-SET16 m4, -13124
-SET16 m5, 0xFFFF
-SET64 m6, 1234605616436508552
-SET64 m7, -8613303245920329199
-SET64 m8, 0x8081828384858687
+.bss
+m[10]
+.code
+SET m_0, 0
+SET m_1, 1
+SET m_2, -1
+SET16 m_3, 4386
+SET16 m_4, -13124
+SET16 m_5, 0xFFFF
+SET64 m_6, 1234605616436508552
+SET64 m_7, -8613303245920329199
+SET64 m_8, 0x8081828384858687
+RST
 ```
 Expect the variables to be set accordingly
 
 ## Target bit param
 ```
+.data
+.define headerAdr 0
+m0 1
+.code
 SET m0, 16
 SET $, 31
 SET *m0, 33
+SET *0xb, 12
+SET *headerAdr, 0x11
+RST
 ```
-Expect R=31, m0=16, m16=33.
+Expect R=31, m0=16, m16=33, memory location 12 = 12,  overwrite program header with 0x11.
 
 ## Source bit param
 ```
-.adr m16 16
-
+.bss
+m[17]
+.code
 SET $, 25
-SET m0, 16
-SET m16, 31
-SET m1, m0
-SET m2, *m0
-SET m3, $
+SET m_0, &m_15
+SET m_15, 31
+SET m_1, m_0
+SET m_2, *m_0
+SET m_3, $
+SET m_4, *0
 ```
-Expect R=25, m0=16, m1=16, m2=31, m3=25, m16=31.
+Expect R=25, m_0=16, m_1=16, m_2=31, m_3=25, m_15=31, m_4=header.
 
 ## Operations
 ```
@@ -64,6 +97,9 @@ Expect R=4, m0=-2, m1=5, m2=-2, m3=12, m4=1, m5=7, m6=2, m7=112, m8=2, m9=1.
 
 ## Branches - True
 ```
+.data
+    m0 0
+.code
     XOR $, $
     SET m0, 10
     BZ next1
@@ -96,6 +132,9 @@ Expect m0=10.
 
 ## Branches - False
 ```
+.data
+    m0 0
+.code
     XOR $, $
     SET m0, $
     BNZ next1
@@ -123,117 +162,139 @@ next6:
 ```
 Expect m0=6.
 
+```
+.data
+    m0 0
+
+.code
+    BNZ distant
+    BZ distant
+    BLEZ distant
+    BGEZ distant
+    BLZ distant
+    BGZ distant
+    NOP
+    BA distant
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+    SET64 m0, 0x1011121314151617
+distant:
+    RST
+```
+Expect branches replaced by jumps
+
 ## Functions
+### Function calling other function.
+For this example, function arguments will be set before function call and the return value will be received by R register ($).
 
 ```
-# By convention, return value will be the last variable, and the arguments the previous.
-.adr retVal 0xff
-.adr arg1 0xfe
-.adr arg2 0xfd
+.code
+   BA entry    # First intruction jumps to main code at the end.
 
-# Entry point
-    SET64 m0, 2555555
-    SET16 m1, -4444
-    SET arg1, m0
-    SET arg2, m1
-    CALL fn_modAddValues
-    SET m2, retVal
-    RST
-
-# Returns the modulus of argument 1
+# *************************
+# FUNCTION fn_modValue: Returns the modulus of argument 1
+.bss
+    fn_modValue_arg1
+.code
 fn_modValue:
     SET $, arg1
     BGEZ alreadyPositive
     NOT $
     ADD $, 1
 alreadyPositive:
-    SET retVal, $
     RET
 
-# Returns the sum of the modulus of two arguments.
-#  We need to store return address because calling other function
-#  will overwrite the return address to the caller.
+# *************************
+# FUNCTION fn_modAddValues: Returns the sum of the modulus of two arguments.
+#   We need to store return address because calling other function
+#   will overwrite the return address to the caller.
+.bss
+    fn_modAddValues_arg1
+    fn_modAddValues_arg2
+    accumulator
+    callerRA
+.code
 fn_modAddValues:
     SRA
     SET callerRA, $
+    SET fn_modValue_arg1, fn_modAddValues_arg1
     CALL fn_modValue
-    SET modArg1, retVal
-    SET arg1, arg2
+    SET accumulator, $
+    SET fn_modValue_arg1, fn_modAddValues_arg2
     CALL fn_modValue
-    ADD retVal, modArg1
+    ADD accumulator, $
     SET $, callerRA
     LRA
+    SET $, accumulator
     RET
+
+# *************
+# Main code
+.data
+    m0 2555555
+    m1 -4444
+.code
+entry:
+    SET fn_modAddValues_arg1, m0
+    SET fn_modAddValues_arg2, m1
+    CALL fn_modAddValues
+    SET m2, $
+    RST
 ```
 Expect m2=2559999.
 
-## Libraries
-
-Same example as before, but using the functions in a library. First the library code:
+### Stack implementation
+Implements a simple stack at the end of free memory.
 ```
-# This is modAddLib
+.data
+    m[3] [1234, 2345, 3456]
+    t[0] 0
 
-# By convention, return value will be the last variable, and the arguments the previous.
-.adr retVal 0xff
-.adr arg1 0xfe
-.adr arg2 0xfd
-.startingAddress 0x80
+.code
 
-# Entry point. Only functions to be executed
-    RST
+SET $, m_0
+CALL _push
 
-# Returns the modulus of argument 1
-# This is a private function, it can only be called from this program. It does not store the caller
-fn_modValue:
-    SET $, arg1
-    BGEZ alreadyPositive
-    NOT $
-    ADD $, 1
-alreadyPositive:
-    SET retVal, $
-    RET
+SET $, m_1
+CALL _push
 
-# Returns the sum of the modulus of two arguments.
-#  We need to store return address because calling other function
-#  will overwrite the return address to the caller.
-# Also needed to store the caller program
-fn_modAddValues:
-    SET callerProgram, $
-    SRA
-    SET callerRA, $
-    CALL fn_modValue
-    SET modArg1, retVal
-    SET arg1, arg2
-    CALL fn_modValue
-    ADD retVal, modArg1
-    SET $, callerRA
-    LRA
-    SET $, callerProgram
-    RETLIB
+CALL _pop
+SET t_0, $
+
+SET $, m_2
+CALL _push
+
+CALL _pop
+SET t_1, $
+
+CALL _pop
+SET t_2, $
+
+RST
+
+# *******
+# Stack implementation. No overflow/underflow checks.
+#
+.data
+    stackVal 255
+.code
+_push:
+   SET *stackVal, $
+   SUB stackVal, 1
+   RET
+_pop:
+   ADD stackVal, 1
+   SET $, *stackVal
+   RET
 ```
-Compile and send the program to any account. Let's assume the transaction was 12345678901234. Now we can use this library in other programs.
-
-```
-# This is the main program
-
-# By convention, return value will be the last variable, and the arguments the previous.
-.adr retVal 0xff
-.adr arg1 0xfe
-.adr arg2 0xfd
-
-# Details from the library
-.define modAddLib 12345678901234
-.define fn_modAddValues 0x000b
-.functionInfo fn_modAddValues 50-52
-
-# Entry point
-    SET64 m0, 2555554
-    SET16 m1, -4443
-    SET arg1, m0
-    SET arg2, m1
-    SET64 $, modAddLib
-    EXEC fn_modAddValues
-    SET m2, retVal
-    RST
-```
-Expect m2=2559997.
+Expect t_0=2345, t_1=3456, t_2=1234;

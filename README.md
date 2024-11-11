@@ -5,7 +5,7 @@ This projects aims to create an architecture that will be executed by a Smart Co
 ## Current status
 * Overall: **Revision 0**
 * Architecture: Revision 1
-* Assembly syntax: Revision 0
+* Assembly syntax: Revision 1
 * Assembler: Revision 0
 * VM Contract: Revision 0
 
