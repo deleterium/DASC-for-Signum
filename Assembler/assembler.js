@@ -7,34 +7,44 @@
 function assembler(assembly_source) {
 
     const dvscAsmSpec = {
+        section_table: [
+            { name: "bss", regex: /^\s*\.bss\s*$/},
+            { name: "data", regex: /^\s*\.data\s*$/},
+            { name: "code", regex: /^\s*\.code\s*$/}
+        ],
+        bss_table: [
+            { name: "blank", regex: /^\s*$/},
+            { name: "zeroall", regex: /^\s*.zeroall\s*$/},
+            { name: "variable", regex: /^\s*(\w+)(\s*\[(\d+)\])?\s*$/}
+        ],
+        data_table: [
+            { name: "define", regex: /^\s*.define\s+(\w+)\s(.+)$/},
+            { name: "blank", regex: /^\s*$/},
+            { name: "number", regex: /^\s*(\w+)(\s*\[(\d+)\])?\s+(-?\w+)\s*$/},
+            { name: "string", regex: /^\s*(\w+)(\s*\[(\d+)\])?\s+(["'].+)$/},
+            { name: "array", regex: /^\s*(\w+)(\s*\[(\d+)\])\s+(\[.+)$/}
+        ],
         op_code_table: [
             { op_code: 0x100, name: "blank", size:0, args_type: "",regex: /^\s*$/},
             { op_code: 0x101, name: "label", size:0, args_type: "",regex: /^\s*(\w+):\s*$/},
-            { op_code: 0x102, name: "adr", size:0, args_type: "",regex: /^\s*.adr\s+(\w+)\s+(\w+)\s*$/},
-            { op_code: 0x103, name: "define", size:0, args_type: "",regex: /^\s*.define\s+(\w+)\s+([*-]?[\w"']+)\s*$/},
-            { op_code: 0x104, name: "functionInfo", size:0, args_type: "",regex: /^\s*.functionInfo\s+(\w+)(.*)$/},
-            { op_code: 0x105, name: "startingAddress", size:0, args_type: "",regex: /^\s*.startingAddress\s+(\w+)\s*$/},
-            { op_code: 0x02, name: "alignCodePage", size:1, args_type: "",regex: /^\s*.alignCodePage\s*$/},
             { op_code: 0x00, name: "RST", size: 1, args_type: "",regex: /^\s*RST\s*$/i},
             { op_code: 0x01, name: "NOP", size: 1, args_type: "",regex: /^\s*NOP\s*$/i},
-            { op_code: 0x02, name: "JNCP", size: 1, args_type: "",regex: /^\s*JNCP\s*$/i},
-            { op_code: 0x10, name: "SET", size:1, args_type: "US", regex: /^\s*SET\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x20, name: "ADD", size:1, args_type: "US", regex: /^\s*ADD\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x30, name: "SUB", size:1, args_type: "US", regex: /^\s*SUB\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x40, name: "MUL", size:1, args_type: "US", regex: /^\s*MUL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x50, name: "DIV", size:1, args_type: "US", regex: /^\s*DIV\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x60, name: "OR",size:1, args_type: "US", regex: /^\s*OR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x70, name: "XOR", size:1, args_type: "US", regex: /^\s*XOR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x80, name: "SHL", size:1, args_type: "US", regex: /^\s*SHL\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0x90, name: "SHR", size:1, args_type: "US", regex: /^\s*SHR\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
-            { op_code: 0xA0, name: "AND", size:1, args_type: "US", regex: /^\s*AND\s+(\$|[*]?\w+)\s*,\s*(\$|[*-]?[\w"']+)\s*$/i},
+            { op_code: 0x10, name: "SET", size:1, args_type: "US", regex: /^\s*SET\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x20, name: "ADD", size:1, args_type: "US", regex: /^\s*ADD\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x30, name: "SUB", size:1, args_type: "US", regex: /^\s*SUB\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x40, name: "MUL", size:1, args_type: "US", regex: /^\s*MUL\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x50, name: "DIV", size:1, args_type: "US", regex: /^\s*DIV\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x60, name: "OR",size:1, args_type: "US", regex: /^\s*OR\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x70, name: "XOR", size:1, args_type: "US", regex: /^\s*XOR\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x80, name: "SHL", size:1, args_type: "US", regex: /^\s*SHL\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0x90, name: "SHR", size:1, args_type: "US", regex: /^\s*SHR\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
+            { op_code: 0xA0, name: "AND", size:1, args_type: "US", regex: /^\s*AND\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
             { op_code: 0xB0, name: "RET", size:1, args_type: "", regex: /^\s*RET\s*$/i},
-            { op_code: 0xB1, name: "RETLIB", size:1, args_type: "", regex: /^\s*RETLIB\s*$/i},
+            { op_code: 0xB1, name: "JMPR", size:1, args_type: "", regex: /^\s*JMPR\s*$/i},
             { op_code: 0xB2, name: "SRA", size:1, args_type: "", regex: /^\s*SRA\s*$/i},
             { op_code: 0xB3, name: "LRA", size:1, args_type: "", regex: /^\s*LRA\s*$/i},
             { op_code: 0xB4, name: "JMP", size:1, args_type: "J", regex: /^\s*JMP\s+(\w+)\s*$/i},
             { op_code: 0xB5, name: "CALL", size:1, args_type: "J", regex: /^\s*CALL\s+(\w+)\s*$/i},
-            { op_code: 0xB6, name: "EXEC", size:1, args_type: "s", regex: /^\s*EXEC\s+(\w+)\s*$/i},
             { op_code: 0xB7, name: "HARA", size:1, args_type: "J", regex: /^\s*HARA\s+(\w+)\s*$/i},
             { op_code: 0xB8, name: "BZ", size:1, args_type: "B", regex: /^\s*BZ\s+(\w+)\s*$/i},
             { op_code: 0xB9, name: "BNZ", size:1, args_type: "B", regex: /^\s*BNZ\s+(\w+)\s*$/i},
@@ -86,15 +96,11 @@ function assembler(assembly_source) {
     };
 
     const AsmObj = {
-        startingMemory: 0, // Start filling variables from this location
-        memory:   Array(256), // 'name'
+        memory:   [], // { name: "varname", value: 645n }
         code:     [], // { source: "", address: 0, station: "", jumpLabel: "", branchLabel: "", size: 0, content: [], content_type: [], hexstring: "" }
         data:     [], // [ 0n, 0n, 1200n ]
         labels:   [], // { label: "asdf", address: 1234}
         define:   [], // ["asdf"] = "as4ad"
-        PName:    "",
-        PDescription: "",
-        PActivationAmount: "",
         asmCode: "",
         bytecode: "",
     };
@@ -111,7 +117,20 @@ function assembler(assembly_source) {
         hexstring: ""
     };
 
+    const header = {
+        magic: 0x31435356,
+        ID: 0,
+        NID: 0,
+        programSize: 0,
+        clearNID: 0
+    }
+
     function bytecode_main() {
+        let bssLines = []
+        let dataLines = []
+        let codeLines = []
+        let bssVars = 0
+        let dataVars = 0
 
         //process line by line
         const source = assembly_source.split("\n")
@@ -119,19 +138,186 @@ function assembler(assembly_source) {
         // remove comments
         const lines = source.map( (asm_line) => asm_line.split("#")[0])
 
-        //first pass, fill address, opcodes, apicodes, constants
+        // consolidate sections
+        let section = "code"
         lines.forEach( (asm_line, idx) => {
             let parts, j;
-            //loop thru all regex expressions
-            for (j=0; j<dvscAsmSpec.op_code_table.length; j++) {
-                parts=dvscAsmSpec.op_code_table[j].regex.exec(asm_line);
+            for (j=0; j<dvscAsmSpec.section_table.length; j++) {
+                parts=dvscAsmSpec.section_table[j].regex.exec(asm_line)
                 if (parts !== null) {
-                    process(parts, dvscAsmSpec.op_code_table[j], idx + 1);
+                    section = dvscAsmSpec.section_table[j].name
+                    return
+                }
+            }
+            switch (section) {
+            case "data":
+                dataLines.push({content: asm_line, line: idx + 1})
+                break;
+            case "bss":
+                bssLines.push({content: asm_line, line: idx + 1})
+                break;
+            default: // case "code":
+                codeLines.push({content: asm_line, line: idx + 1})
+                break;
+            }
+        })
+
+        // reserve space for header
+        AsmObj.memory.push({ name: "_header", value: 0n })
+
+        // process data
+        dataLines.forEach( (item) => {
+            let parts, j;
+            let value;
+            //loop thru all regex expressions
+            for (j=0; j<dvscAsmSpec.data_table.length; j++) {
+                parts=dvscAsmSpec.data_table[j].regex.exec(item.content);
+                if (parts !== null) {
+                    switch (dvscAsmSpec.data_table[j].name) {
+                    case "number":
+                        value = decodeString(parts[4])
+                        if (value === undefined) {
+                            throw new TypeError(`Error at line ${item.line}: Invalid number '${parts[3]}'`);
+                        }
+                        if (parts[2] === undefined) {
+                            declareMemory(parts[1], item.line, value % (1n << 64n))
+                            value /= 1n << 64n
+                        } else {
+                            for (let i=0; i< Number(parts[3]); i++) {
+                                declareMemory(`${parts[1]}_${i}`, item.line, value % (1n << 64n))
+                                value /= 1n << 64n
+                            }
+                        }
+                        if (value !== 0n) {
+                            throw new TypeError(`Error at line ${item.line}: Number overflow (too big) '${parts[4]}'`);
+                        }
+                        break
+                    case "string":
+                        value = parts[4].trim()
+                        if ((value.startsWith('"') && !value.endsWith('"')) ||
+                            (value.startsWith("'") && !value.endsWith("'"))) {
+                            throw new TypeError(`Error line ${item.line}: Invalid quoted string: ${parts[4]}`);
+                        }
+                        value = decodeString(value)
+                        if (value === undefined) {
+                            throw new TypeError(`Error at line ${item.line}: Invalid quoted string '${parts[4]}'`);
+                        }
+                        if (parts[2] === undefined) {
+                            declareMemory(parts[1], item.line, value % (1n << 64n))
+                            value /= 1n << 64n
+                        } else {
+                            for (let i=0; i< Number(parts[3]); i++) {
+                                declareMemory(`${parts[1]}_${i}`, item.line, value % (1n << 64n))
+                                value /= 1n << 64n
+                            }
+                        }
+                        if (value !== 0n) {
+                            throw new TypeError(`Error at line ${item.line}: String overflow (too long) '${parts[4]}'`);
+                        }
+                        break
+                    case "array":
+                        value = parts[4].trim()
+                        if (!value.endsWith(']')) {
+                            throw new TypeError(`Error line ${item.line}: Invalid array value string: ${parts[4]}`);
+                        }
+                        let arrayValues = value.slice(1, -1).split(",")
+                        if (arrayValues.length > Number(parts[3])) {
+                            throw new TypeError(`Error at line ${item.line}: Too many array items in '${parts[4]}'`);
+                        }
+                        for (let i=0; i< Number(parts[3]); i++) {
+                            const arrayVal = decodeString(arrayValues[i]?.trim())
+                            if (arrayVal >= 1n << 64n ) {
+                                throw new TypeError(`Error at line ${item.line}: Item overflow in '${parts[4]}', index ${i}.`);
+                            }
+                            declareMemory(`${parts[1]}_${i}`, item.line, arrayVal ?? 0n)
+                        }
+                        break
+                    case "define":
+                        if (AsmObj.define[parts[1]] !== undefined) {
+                            throw new TypeError(`Error at line ${currentLine}: ${parts[1]} already defined.`);
+                        }
+                        AsmObj.define[parts[1]] = parts[2];
+                        break
+                    default:
+                        // blank
+                    }
                     return;
                 }
             }
+            throw new TypeError(`Error line ${item.line}: No matching rule in .data section.`);
+        });
+        dataVars = AsmObj.memory.length
+        if (dataVars === 1) {
+            header.ID = 0
+        } else {
+            header.ID = Math.ceil(dataVars / 4)
+        }
 
-            throw new TypeError(`Error line ${idx + 1}: No matching rule.`);
+        // process bss
+        bssLines.forEach( (item) => {
+            let parts, j;
+            //loop thru all regex expressions
+            for (j=0; j<dvscAsmSpec.bss_table.length; j++) {
+                parts=dvscAsmSpec.bss_table[j].regex.exec(item.content);
+                if (parts !== null) {
+                    switch (dvscAsmSpec.bss_table[j].name) {
+                    case "zeroall":
+                        header.clearNID = 1
+                        break
+                    case "variable":
+                        if (parts[2] === undefined) {
+                            declareMemory(parts[1], item.line)
+                            break;
+                        }
+                        for (let i = 0; i < Number(parts[3]); i++) {
+                            declareMemory(`${parts[1]}_${i}`, item.line)
+                        }
+                        break
+                    default:
+                        // blank
+                    }
+                    return;
+                }
+            }
+            throw new TypeError(`Error line ${item.line}: No matching rule for .bss section.`);
+        });
+        bssVars = AsmObj.memory.length - dataVars
+        if (bssVars + dataVars === 1) {
+            header.NID = 0
+        } else {
+            header.NID = Math.ceil((bssVars + dataVars) / 4) - header.ID
+            for (; (bssVars + dataVars) % 4 !== 0; bssVars++) {
+                declareMemory(`_padding_${bssVars}`, -1, 0n)
+            }
+        }
+
+        // Insert memory in code.
+        AsmObj.memory.forEach( (item) => {
+            AsmObj.code.push({
+                source: `@${item.name}`,
+                address: -1,
+                station: "",
+                jumpLabel: "",
+                branchLabel: "",
+                size: 8,
+                content: [ item.value ],
+                content_type: [ "l" ],
+                hexstring: ""
+            })
+        })
+
+        //first pass, fill address, opcodes, apicodes, constants
+        codeLines.forEach( (item) => {
+            let parts, j;
+            //loop thru all regex expressions
+            for (j=0; j<dvscAsmSpec.op_code_table.length; j++) {
+                parts=dvscAsmSpec.op_code_table[j].regex.exec(item.content);
+                if (parts !== null) {
+                    process(parts, dvscAsmSpec.op_code_table[j], item.line);
+                    return;
+                }
+            }
+            throw new TypeError(`Error line ${item.line}: No matching rule for .code section.`);
         });
 
         //second pass, solve branches offsets
@@ -143,26 +329,36 @@ function assembler(assembly_source) {
         //third pass, push jump an branches.
         AsmObj.code.forEach( fillJumpsAndBranches );
 
+        header.programSize = Math.ceil((AsmObj.code[AsmObj.code.length - 1].address + AsmObj.code[AsmObj.code.length - 1].size) / 32)
+        AsmObj.code[0].content[0] = BigInt(header.magic) |
+            BigInt(header.ID) << 32n |
+            BigInt(header.NID) << 40n |
+            BigInt(header.programSize) << 48n |
+            BigInt(header.clearNID) << 56n
+
         //last pass, join all contents in little endian notation (code)
         AsmObj.code.forEach( finishHim );
 
         return buildRetObj();
     }
 
-    function process(parts, instruction, currentLine) {
-
-        function getAndSetMemoryAddress(asm_name) {
-            let idx = AsmObj.memory.findIndex(value => value === asm_name);
-            if (idx === -1) {
-                idx = AsmObj.memory.findIndex((value, num) => num >= AsmObj.startingMemory && value === undefined);
-                if (idx === -1) {
-                    throw new TypeError(`Error at line ${currentLine}: memory is full. No more variables allowed.`);
-                }
-                AsmObj.memory[idx] = asm_name;
-            }
-            return idx;
+    function declareMemory(asm_name, line, value) {
+        let idx = AsmObj.memory.findIndex(item => item.name === asm_name);
+        if (idx !== -1) {
+            throw new TypeError(`Error at line ${line}: Variable '${asm_name}' already declared.`);
         }
+        AsmObj.memory.push({ name: asm_name, value: value ?? 0n})
+    }
 
+    function getMemoryAddress(asm_name, line) {
+        let idx = AsmObj.memory.findIndex(item => item.name === asm_name);
+        if (idx === -1) {
+            throw new TypeError(`Error at line ${line}: Variable '${asm_name}' not declared.`);
+        }
+        return idx;
+    }
+
+    function process(parts, instruction, currentLine) {
         let CodeObj = JSON.parse(JSON.stringify(Code_Template));
 
         //debug helper
@@ -174,36 +370,6 @@ function assembler(assembly_source) {
         case 0x101: // label
             CodeObj.station = parts[1];
             AsmObj.code.push(CodeObj);
-            return;
-        case 0x102: // .adr
-            if (AsmObj.memory[parts[2]]) {
-                throw new TypeError(`Error at line ${currentLine}: redeclaring variable at memory address ${parts[2]}.`);
-            }
-            AsmObj.memory[Number(parts[2])] = parts[1];
-            return;
-        case 0x103: // .define
-            if (AsmObj.define[parts[1]] !== undefined) {
-                throw new TypeError(`Error at line ${currentLine}: ${parts[1]} already defined.`);
-            }
-            AsmObj.define[parts[1]] = parts[2];
-            return;
-        case 0x104: // .functionInfo
-            if (AsmObj.define[parts[1]] === undefined) {
-                throw new TypeError(`Error at line ${currentLine}: Extern function info depends on defining the function first ${parts[1]}.`);
-            }
-            parts[2].split(",").forEach(memString => {
-                let range = memString.split("-");
-                if (range.length === 1) {
-                    AsmObj.memory[Number(range[0])] = parts[1];
-                } else {
-                    for (let idx=Number(range[0]); idx <= Number(range[1]); idx++) {
-                        AsmObj.memory[idx] = parts[1];
-                    }
-                }
-            })
-            return;
-        case 0x105: // .startingAddress
-            AsmObj.startingMemory = Number(parts[1]);
             return;
         }
 
@@ -218,7 +384,8 @@ function assembler(assembly_source) {
             case "T":
             case "U":
             case "S":
-                let varName = decodeString(defineOrValue(parts[i+1]));
+                let varName = defineOrValue(parts[i+1]);
+                let varValue = decodeString(varName);
                 let bitParam;
                 if (varName === "$") {
                     // Register
@@ -226,19 +393,36 @@ function assembler(assembly_source) {
                     continue;
                 } else if (varName[0] === "*") {
                     // Content of Variable address
-                    bitParam = 0x3 << (type === "U" ? 2 : 0);
-                    CodeObj.content.push(getAndSetMemoryAddress(varName.slice(1)));
-                } else if (!isNaN(varName)) {
-                    // Its a Number!
+                    varName = defineOrValue(varName.slice(1));
+                    varValue = decodeString(varName);
+                    if (varValue !== undefined) {
+                        // *25 (using defined memory address)
+                        bitParam = 0x1 << (type === "U" ? 2 : 0);
+                        CodeObj.content.push(Number(varValue));
+                    } else {
+                        // *mem (using memory name)
+                        bitParam = 0x3 << (type === "U" ? 2 : 0);
+                        CodeObj.content.push(getMemoryAddress(varName, currentLine));
+                    }
+                } else if (varValue !== undefined) {
+                    // Its a number!
                     if (type == "T" || type == "U") {
                         // Numbers are invalid for target
                         throw new TypeError(`Error at line ${currentLine}: Invalid value for target.`);
                     }
                     bitParam = 0x2;
-                    CodeObj.content.push(adjustBits(varName, 8, currentLine));
+                    CodeObj.content.push(adjustBits(varValue, 8, currentLine));
+                } else if (varName[0] === "&") {
+                    // Its address of a memory!
+                    if (type == "T" || type == "U") {
+                        //  address of a memory are invalid for target
+                        throw new TypeError(`Error at line ${currentLine}: Invalid value for target.`);
+                    }
+                    bitParam = 0x2;
+                    CodeObj.content.push(adjustBits(getMemoryAddress(varName.slice(1)), 8, currentLine));
                 } else {
                     bitParam = 0x1 << (type === "U" ? 2 : 0);
-                    CodeObj.content.push(getAndSetMemoryAddress(varName));
+                    CodeObj.content.push(getMemoryAddress(varName, currentLine));
                 }
                 CodeObj.content[0] |= bitParam;
                 CodeObj.size++;
@@ -275,7 +459,7 @@ function assembler(assembly_source) {
                 }
                 for (const varArg of varArgs) {
                     CodeObj.size++;
-                    CodeObj.content.push(getAndSetMemoryAddress(varArg.trim()));
+                    CodeObj.content.push(getMemoryAddress(varArg.trim()));
                     CodeObj.content_type.push(type);
                 }
                 continue;
@@ -286,38 +470,39 @@ function assembler(assembly_source) {
         AsmObj.code.push(CodeObj);
     }
 
-    function adjustBits(str, bits, currentLine) {
+    function adjustBits(value, bits, currentLine) {
+        if (value === undefined) {
+            throw new TypeError(`Error at line ${currentLine}: Expecting a number.`);
+        }
         bits = BigInt(bits);
-        if (isNaN(str)) {
-            throw new TypeError(`Error at line ${currentLine}: Invalid number value.`);
+        if (value >= 1n << bits || value < -1n << (bits - 1n) ) {
+            throw new TypeError(`Error at line ${currentLine}: value '${value}' must be ${bits}-bit.`);
         }
-        let val = BigInt(str);
-        if (val >= 1n << bits || val < -1n << (bits - 1n) ) {
-            throw new TypeError(`Error at line ${currentLine}: Immediate value must be ${bits}-bit.`);
+        if (value < 0n) {
+            value += 1n << (bits);
         }
-        if (val < 0n) {
-            val += 1n << (bits);
-        }
-        return val
+        return value
     }
 
     // If it is a quoted string, converts it to decimal number
     function decodeString(str) {
-        if (str.length > 2 &&
-            (str.startsWith('"') && str.endsWith('"')) ||
-            (str.startsWith("'") && str.endsWith("'"))) {
-            const textEncoder = new TextEncoder();
-            const encoded = textEncoder.encode(str.slice(1,-1));
-            return encoded.reduceRight((accumulator, currentValue) => (accumulator << 8n) + BigInt(currentValue), 0n).toString(10)
+        try {
+            if (str.startsWith('"') || str.startsWith("'")) {
+                const textEncoder = new TextEncoder();
+                const encoded = textEncoder.encode(str.slice(1,-1));
+                return encoded.reduceRight((accumulator, currentValue) => (accumulator << 8n) + BigInt(currentValue), 0n)
+            }
+            return BigInt(str.split("_").join(""))
+        } catch (e) {
+            return undefined
         }
-        return str;
     }
 
     function defineOrValue(val) {
         if (AsmObj.define[val] !== undefined) {
-            return AsmObj.define[val];
+            return AsmObj.define[val].trim();
         }
-        return val;
+        return val.trim();
     }
 
     function fillAddress( currAddr, currItem) {
@@ -331,18 +516,6 @@ function assembler(assembly_source) {
 
     function checkBranches(CodeObj, idx) {
 
-        if (CodeObj.content[0] === 0x02 && CodeObj.address % 32 !== 31 && AsmObj.code[idx + 1].content[0] !== 0x01) {
-            let NOPCode = JSON.parse(JSON.stringify(Code_Template));
-            // instruction starting in one page and ending in another. Not allowed!
-            NOPCode.source = "JNCP padding";
-            NOPCode.size = 1;
-            NOPCode.content.push(0x01);
-            NOPCode.content_type.push("O");
-            for (let i = 0; i < 31 - (CodeObj.address % 32); i++) {
-                AsmObj.code.splice(idx + 1, 0, JSON.parse(JSON.stringify(NOPCode)))
-            }
-            return false; // do it again.
-        }
         if (CodeObj.branchLabel.length != 0) {
             let search = AsmObj.labels.find( obj => obj.label === CodeObj.branchLabel );
             if (search === undefined) {
@@ -371,10 +544,9 @@ function assembler(assembly_source) {
                     case 0xBE:  // BA -> JMP 
                         CodeObj.content[0] = 0xB4;
                         CodeObj.size = 3;
-                        JumpCode.jumpLabel = CodeObj.branchLabel;
+                        CodeObj.jumpLabel = CodeObj.branchLabel;
                         CodeObj.branchLabel = ""
                         // No need to swap, just update opcode. End
-                        clearPaddingNops();
                         return false;
                 }
                 // change branch destination
@@ -391,15 +563,10 @@ function assembler(assembly_source) {
                     // insert jump operation
                     AsmObj.code.splice(idx + 1, 0, JumpCode);
                 }
-                clearPaddingNops();
                 return false; // do it again.
             }
         }
         return true;
-    }
-
-    function clearPaddingNops() {
-        AsmObj.code = AsmObj.code.filter(cdObj => cdObj.source !== "JNCP padding");
     }
 
     function fillJumpsAndBranches(CodeObj) {
@@ -426,6 +593,12 @@ function assembler(assembly_source) {
         const codepages=Math.ceil(AsmObj.bytecode.length / (64));
         // TODO right calculation
         const minimumfee=(codepages)*7350000;
+
+        let deployHex = AsmObj.bytecode
+        if (header.ID + header.NID > 1) {
+            deployHex = AsmObj.bytecode.slice(0, 64 * (header.ID ? header.ID : 1)) + AsmObj.bytecode.slice(64 * (header.ID + header.NID))
+        }
+
         return {
             CodePages: codepages,
             MinimumFeeNQT: minimumfee,
@@ -435,6 +608,7 @@ function assembler(assembly_source) {
             },
             AsmCode: AsmObj.asmCode,
             ByteCode: AsmObj.bytecode,
+            DeployCode: deployHex,
             Memory: AsmObj.memory,
             Labels: AsmObj.labels,
         };
@@ -448,7 +622,7 @@ function assembler(assembly_source) {
         if (CodeObj.size !== 0) {
             AsmObj.asmCode +=
                 parseInt(CodeObj.address / 32).toString(16).padStart(2,"0") + "." +
-                parseInt(CodeObj.address % 32).toString(16).padStart(2,"0") + ": " +
+                parseInt(CodeObj.address).toString(16).padStart(4,"0") + ": " +
                 CodeObj.hexstring +
                 " # ".padStart(23 - CodeObj.hexstring.length) + CodeObj.source + "\n";
         } else {
@@ -458,6 +632,7 @@ function assembler(assembly_source) {
     }
 
     function number2hexstring(value, type) {
+        let bytes = 0;
 
         switch (type) {
         case "O":
@@ -465,23 +640,27 @@ function assembler(assembly_source) {
         case "U":
         case "S":
         case "F":
-            return value.toString(16).padStart(2,"0");
+            bytes = 1;
+            break;
         case "B":
-            if (value >= 0) {
-                return value.toString(16).padStart(2,"0");
+            bytes = 1;
+            if (value < 0) {
+                value += 256;
             }
-            return (256 + value).toString(16).padStart(2,"0");
+            break;
+        case "s":
         case "J":
-            return parseInt(value % 32).toString(16).padStart(2,"0") +
-                parseInt(value / 32).toString(16).padStart(2,"0");
+            bytes=2;
+            break;
+        case "l":
+            bytes=8;
+            if (value < 0n) {
+                value += 1n << 64n;
+            }
         }
 
-        let bytes = 0;
         let ret_str = "";
         let conv_value = BigInt(value);
-
-        if (type === "s") bytes=2;
-        if (type === "l") bytes=8;
 
         for (let i = 0, base = 256n ; i < bytes; i++) {
             ret_str += (conv_value % base).toString(16).padStart(2, "0");

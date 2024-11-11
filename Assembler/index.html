@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>DASC Assembler</title>
+    <title>DASC Assembler v1</title>
     <meta charset="utf-8">
     <script src="assembler.js"></script>
 
@@ -59,7 +59,7 @@ function ClickCompile() {
     try {
         const decomp_output = assembler(codeString.trim());
         document.getElementById("map_obj").value = JSON.stringify(decomp_output.JSONmap, stringifyReplacer, '    ');
-        document.getElementById("bytecode").innerHTML  = decomp_output.AsmCode + "\n\n" + decomp_output.ByteCode;
+        document.getElementById("bytecode").innerHTML  = decomp_output.AsmCode + "\n\n" + "HexString to deploy:\n" + decomp_output.DeployCode + "\n\nFull program hexString: " + decomp_output.ByteCode;
     } catch (e) {
         alert(e.message);
         document.getElementById("bytecode").innerHTML  = e.message + "\n\n" + e.stack;
@@ -72,7 +72,7 @@ function ClickCompile() {
 <body>
  
     <div>
-        <h1>DASC Assembler</h1>
+        <h1>DASC Assembler v1</h1>
         <p>Deleterium Architecture for Smart Contracts in Signum blockchain. Assembles Very Smart Contract (VSC) to be used in the VM SC (Virtual Machine Smart Contract) of DASC project.</p>
         <h3>Assembly program:</h3>
         <textarea id="codeString" placeholder="Bytecode here" spellcheck="false"></textarea>
@@ -93,6 +93,7 @@ function ClickCompile() {
         <br/><br/><br/>
         <footer>Notes:<br />
             • 2023/07/19 First release<br />
+            • 2024/11/11 Revision 1<br />
             Project page at <a href="https://github.com/deleterium/DASC-for-Signum">GitHub</a>.
         </footer>
     </div>
