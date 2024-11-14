@@ -123,7 +123,7 @@ void executeInstruction(void) {
             return;
         }
         // hiOpCode <= 0xA)
-        execHiOpCode1toA();
+        execHiOpCode1toAandE();
         return;
     }
     if (hiOpCode <= 0xD) {
@@ -139,10 +139,11 @@ void executeInstruction(void) {
         execHiOpCodeF();
         return;
     }
-    // matches reserved 0xE hiOpCode
+    // matches 0xE hiOpCode
+    execHiOpCode1toAandE();
 }
 
-void execHiOpCode1toA() {
+void execHiOpCode1toAandE() {
     pArg1 = getTarget((opCode >> 2) & 0x03);
     arg2 = getSource(opCode & 0x03);
     
@@ -151,11 +152,11 @@ void execHiOpCode1toA() {
         case 0x1: // 0x10 SET
             *pArg1 = arg2;
             return;
-        case 0x2: // 0x20 ADD
-            *pArg1 += arg2;
-            return;
         case 0x3: // 0x30 SUB
             *pArg1 -= arg2;
+            return;
+        case 0x2: // 0x20 ADD
+            *pArg1 += arg2;
             return;
         case 0x4: // 0x40 MUL
             *pArg1 *= arg2;
@@ -166,11 +167,11 @@ void execHiOpCode1toA() {
         }
     }
     switch (hiOpCode) {
-    case 0x6: // 0x60 OR
-        *pArg1 |= arg2;
-        return;
     case 0x7: // 0x70 XOR
         *pArg1 ^= arg2;
+        return;
+    case 0x6: // 0x60 OR
+        *pArg1 |= arg2;
         return;
     case 0x8: // 0x80 SHL
         *pArg1 <<= arg2;
@@ -178,9 +179,11 @@ void execHiOpCode1toA() {
     case 0x9: // 0x90 SHR
         *pArg1 >>= arg2;
         return;
-    default:  // 0xA0 AND
+    case 0xA: // 0xA0 AND
         *pArg1 &= arg2;
         return;
+    default:  // 0xE0 MOD
+        *pArg1 %= arg2;
     }
 }
 

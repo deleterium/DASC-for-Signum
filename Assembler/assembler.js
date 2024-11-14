@@ -54,6 +54,7 @@ function assembler(assembly_source) {
             { op_code: 0xBD, name: "BLEZ", size:1, args_type: "B", regex: /^\s*BLEZ\s+(\w+)\s*$/i},
             { op_code: 0xBE, name: "BA", size:1, args_type: "B", regex: /^\s*BA\s+(\w+)\s*$/i},
             { op_code: 0xC0, name: "SYS", size:1, args_type: "F", regex: /^\s*SYS\s+(\w+)(.*)$/i},
+            { op_code: 0xE0, name: "MOD", size:1, args_type: "US", regex: /^\s*MOD\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
             { op_code: 0xF0, name: "SLEEP", size: 1, args_type: "S",regex: /^\s*SLEEP\s+(\$|[*]?[\w"']+)\s*$/i},
             { op_code: 0xF4, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+(\$|[*]?\w+)\s*$/i},
             { op_code: 0xF8, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*(-?[\w"']+)\s*$/i},

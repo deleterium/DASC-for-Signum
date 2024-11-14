@@ -151,6 +151,7 @@ The following table shows the type of arguments that can be required by opCodes:
 | Operation | SHL | trg, src¹ |  | 0x80 | 0x80-0x8F | trg <<= src |
 | Operation | SHR | trg, src¹ |  | 0x90 | 0x90-0x9F | trg >>= src |
 | Operation | AND | trg, src¹ |  | 0xA0 | 0xA0-0xAF | trg &= src |
+| Operation | MOD | trg, src¹ |  | 0xE0 | 0xE0-0xEF | trg %= src |
 | Operation | NOT | trg |  | 0xF4 | 0xF4-0xF7 | trg = ~trg |
 | Operation | SET16 | trg | short | 0xF8 | 0xF8-0xFB | Sets target to the 16-bit argument (to be casted to signed long) |
 | Operation | SET64 | trg | long | 0xFC | 0xFC-0xFF | Sets target to the 64-bit argument |
@@ -168,7 +169,6 @@ The following table shows the type of arguments that can be required by opCodes:
 | Jump | RESERVED |  | short | 0xB6 | 0xB6 | Not used |
 | Jump | HARA |  | short | 0xB7 | 0xB7 | **H**alt program **A**nd **R**estart **A**t argument address on next activation. |
 | System | SYS | func | N*memAdr | 0xC0 | 0xC0-0xDF | Number of arguments is dependent of func type. |
-| Reserved |  |  |  |  | 0xE0-0xEF |  |
 
 1) If source is immediate, the signed byte argument is casted to signed long before the operation.
 

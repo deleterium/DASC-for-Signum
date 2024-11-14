@@ -70,30 +70,24 @@ Expect R=25, m_0=16, m_1=16, m_2=31, m_3=25, m_15=31, m_4=header.
 
 ## Operations
 ```
+.data
+m[11] [1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 77]
+.code
 SET $, 4
-SET m0, 1
-SET m1, 1
-SET m2, 2
-SET m3, 3
-SET m4, 4
-SET m5, 5
-SET m6, 6
-SET m7, 7
-SET m8, 8
-SET m9, 9
 SLEEP 1
-NOT m0
-ADD m1, $
-SUB m2, $
-MUL m3, $
-DIV m4, $
-OR  m5, 3
-XOR m6, $
-SHL m7, $
-SHR m8, 2
-AND m9, 1
+NOT m_0
+ADD m_1, $
+SUB m_2, $
+MUL m_3, $
+DIV m_4, $
+OR  m_5, 3
+XOR m_6, $
+SHL m_7, $
+SHR m_8, 2
+AND m_9, 1
+MOD m_10, 55
 ```
-Expect R=4, m0=-2, m1=5, m2=-2, m3=12, m4=1, m5=7, m6=2, m7=112, m8=2, m9=1.
+Expect R=4, m_0=-2, m_1=5, m_2=-2, m_3=12, m_4=1, m_5=7, m_6=2, m_7=112, m_8=2, m_9=1, m_10=22
 
 ## Branches - True
 ```
