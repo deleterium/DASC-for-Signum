@@ -16,7 +16,7 @@ long R; // The Register
 long VMM[256]; // Virtual Machine Memory
 
 long CIP; // Current Instruction Pointer (0 to 2048)
-long opCode, hiOpCode, lowOpCode;
+long opCode, hiOpCode, lowOpCode, opCache;
 long *pArg1, *pArg2, *pArg3, *pArg4, *pArg5;
 long arg1, arg2;
 
@@ -36,6 +36,16 @@ struct HEADER {
         programSize,
         clearNID;
 } header;
+
+// Ensure all variables are initialized
+const stats.running = 0;
+const stats.steps = 0;
+const stats.programs = 0;
+const header.magic = 0;
+const header.IDpages = 0;
+const header.NIDpages = 0;
+const header.programSize = 0;
+const header.clearNID = 0;
 
 void main () {
     while ((txId = getNextTx()) != 0) {
@@ -60,7 +70,9 @@ void main () {
                 // Reset VSC if CIP < 0 or CIP > 2047
                 break;
             }
-            opCode = getByte();
+            opCache = getLong();
+            CIP -= 7; // Advance only one instruction
+            opCode = opCache & 0xFF;
             lowOpCode = opCode & 0xF;
             hiOpCode = opCode >> 4;
             executeInstruction();
@@ -189,7 +201,7 @@ void execHiOpCodeB() {
         // Branches: 0xB8 <= opcode <= 0xBF
         long brch = opCode & 0x7;
         if (brch == 0x7) {
-            long params = getByte();
+            long params = getCachedByte();
             brch = params >> 4;
             if (brch < 0x6) {
                 arg1 = getSource((params >> 2) & 0x3) - getSource(params & 0x3);
@@ -207,7 +219,7 @@ void execHiOpCodeB() {
             (brch == 0x5 && R <= 0) ||
             (brch == 0x6)) {
             // advanceOffset
-            register long offset = getByte();
+            register long offset = getCachedByte();
             if (offset > 0x7F) {
                 offset -= 0x100;
             }
@@ -218,7 +230,7 @@ void execHiOpCodeB() {
         return;
     }
     if (lowOpCode >= 0x4) {
-        register long codeAddr = getShort();
+        register long codeAddr = getCachedShort();
         switch (lowOpCode) {
         case 0x4: // 0xB4 JMP
             CIP = codeAddr;
@@ -265,7 +277,7 @@ void execHiOpCodeF(void) {
         return;
     }
     if (lowOpCode >= 0x8) { // 0xF8 SET16
-        *pArg1 = getShort();
+        *pArg1 = getCachedShort();
         return;
     }
     // 0xF4 NOT
@@ -425,18 +437,18 @@ long *getTarget(long type) {
         return &R;
     }
     if (type == 0x01) { // Memory
-        return VMM + getByte();
+        return VMM + getCachedByte();
     }
     // 0x02 is not  used
     // type is 0x03 Content Of Memory
-    return VMM + (VMM[getByte()] & 0xFF);
+    return VMM + (VMM[getCachedByte()] & 0xFF);
 }
 
 long getSource(long type) {
     if (type == 0x00) { // Register
         return R;
     }
-    register long b = getByte();
+    register long b = getCachedByte();
     switch (type) {
     case 0x01: // Memory
         return VMM[b];
@@ -450,21 +462,17 @@ long getSource(long type) {
     }
 }
 
-long getByte(void) {
-    register long codeCache = VMM[CIP / 8];
-    codeCache >>= (CIP % 8) * 8;
+long getCachedByte(void) {
+    opCache >>= 8;
     CIP++;
-    return codeCache & 0xFF;
+    return opCache & 0xFF;
 }
 
-long getShort(void) {
-    register long shift = (CIP % 8) * 8;
-    register long retVal = VMM[CIP / 8] >> shift;
+long getCachedShort(void) {
+    opCache >>= 8;
+    register long retVal = opCache & 0xFFFF;
+    opCache >>= 8;
     CIP += 2;
-    if (shift == 56) {
-        retVal |= VMM[CIP / 8] << 8;
-    }
-    retVal &= 0xFFFF;
     if (retVal > 0x7FFF) {
         retVal -= 0x10000;
     }
