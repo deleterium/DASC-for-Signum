@@ -53,6 +53,7 @@ function assembler(assembly_source) {
             { op_code: 0xBC, name: "BGEZ", size:1, args_type: "B", regex: /^\s*BGEZ\s+(\w+)\s*$/i},
             { op_code: 0xBD, name: "BLEZ", size:1, args_type: "B", regex: /^\s*BLEZ\s+(\w+)\s*$/i},
             { op_code: 0xBE, name: "BA", size:1, args_type: "B", regex: /^\s*BA\s+(\w+)\s*$/i},
+            { op_code: 0xBF, name: "BX", size:3, args_type: "BXSS", regex: /^\s*BX\s+(\$|[&*-]?[\w"']+)\s*([!=<>]+)\s+(\$|[&*-]?[\w"']+),\s*(\w+)\s*$/i},
             { op_code: 0xC0, name: "SYS", size:1, args_type: "F", regex: /^\s*SYS\s+(\w+)(.*)$/i},
             { op_code: 0xE0, name: "MOD", size:1, args_type: "US", regex: /^\s*MOD\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
             { op_code: 0xF0, name: "SLEEP", size: 1, args_type: "S",regex: /^\s*SLEEP\s+(\$|[*]?[\w"']+)\s*$/i},
@@ -360,7 +361,46 @@ function assembler(assembly_source) {
     }
 
     function process(parts, instruction, currentLine) {
+        function getParam(str, type) {
+            let varName = defineOrValue(str);
+            let varValue = decodeString(varName);
+            if (varName === "$") {
+                // Register
+                // bitParam is zero, no need to update opCode value neither size;
+                return { bitParam: 0x0, value: undefined};
+            }
+            if (varName[0] === "*") {
+                // Content of Variable address
+                varName = defineOrValue(varName.slice(1));
+                varValue = decodeString(varName);
+                if (varValue !== undefined) {
+                    // *25 (using defined memory address)
+                    return { bitParam: 0x1, value: Number(varValue)};
+                }
+                // *mem (using memory name)
+                return { bitParam: 0x3, value: getMemoryAddress(varName, currentLine)};
+            }
+            if (varValue !== undefined) {
+                // Its a number!
+                if (type == "T" || type == "U") {
+                    // Numbers are invalid for target
+                    throw new TypeError(`Error at line ${currentLine}: Invalid value for target.`);
+                }
+                return { bitParam: 0x2, value: adjustBits(varValue, 8, currentLine)};
+            }
+            if (varName[0] === "&") {
+                // Its address of a memory!
+                if (type == "T" || type == "U") {
+                    //  address of a memory are invalid for target
+                    throw new TypeError(`Error at line ${currentLine}: Invalid value for target.`);
+                }
+                return { bitParam: 0x2, value: adjustBits(getMemoryAddress(varName.slice(1), currentLine), 8, currentLine)};
+            }
+            return { bitParam: 0x1, value: getMemoryAddress(varName, currentLine)};
+        }
+
         let CodeObj = JSON.parse(JSON.stringify(Code_Template));
+        CodeObj.size = instruction.size;
 
         //debug helper
         CodeObj.source=parts[0];
@@ -372,10 +412,61 @@ function assembler(assembly_source) {
             CodeObj.station = parts[1];
             AsmObj.code.push(CodeObj);
             return;
+        case 0xBF: // BX is special
+            CodeObj.content.push(instruction.op_code);
+            CodeObj.content_type.push("O");
+            let brchX = 0;
+            switch (parts[2]) {
+            case "==":
+                brchX = 0x0;
+                if (parts[3] === "0" ) {
+                    brchX += 0x6;
+                }
+                break;
+            case "!=":
+                brchX = 0x1;
+                if (parts[3] === "0" ) {
+                    brchX += 0x6;
+                }
+                break;
+            case ">":
+                brchX = 0x2;
+                break;
+            case "<":
+                brchX = 0x3;
+                break;
+            case ">=":
+                brchX = 0x4;
+                break;
+            case "<=":
+                brchX = 0x5;
+                break;
+            }
+            let param1 = getParam(parts[1], "S");
+            let param2 = getParam(parts[3], "S");
+            if (parts[3] === "0" ) {
+                CodeObj.content.push((brchX << 4) | param1.bitParam);
+            } else {
+                CodeObj.content.push((brchX << 4) | (param1.bitParam << 2) | param2.bitParam);
+            }
+            CodeObj.content_type.push("X");
+
+            if (param1.bitParam !== 0) {
+                CodeObj.content.push(param1.value);
+                CodeObj.content_type.push("S");
+                CodeObj.size++;
+            }
+            if (parts[3] !== "0" && param2.bitParam !== 0) {
+                CodeObj.content.push(param2.value);
+                CodeObj.content_type.push("S");
+                CodeObj.size++;
+            }
+            CodeObj.branchLabel = parts[4];
+            AsmObj.code.push(CodeObj);
+            return;
         }
 
         //push OpCode at content[]
-        CodeObj.size = 1;
         CodeObj.content.push(instruction.op_code);
         CodeObj.content_type.push("O");
 
@@ -385,49 +476,20 @@ function assembler(assembly_source) {
             case "T":
             case "U":
             case "S":
-                let varName = defineOrValue(parts[i+1]);
-                let varValue = decodeString(varName);
-                let bitParam;
-                if (varName === "$") {
+                let param = getParam(parts[i+1], type);
+                if (param.bitParam === 0x0) {
                     // Register
                     // bitParam is zero, no need to update opCode value neither size;
                     continue;
-                } else if (varName[0] === "*") {
-                    // Content of Variable address
-                    varName = defineOrValue(varName.slice(1));
-                    varValue = decodeString(varName);
-                    if (varValue !== undefined) {
-                        // *25 (using defined memory address)
-                        bitParam = 0x1 << (type === "U" ? 2 : 0);
-                        CodeObj.content.push(Number(varValue));
-                    } else {
-                        // *mem (using memory name)
-                        bitParam = 0x3 << (type === "U" ? 2 : 0);
-                        CodeObj.content.push(getMemoryAddress(varName, currentLine));
-                    }
-                } else if (varValue !== undefined) {
-                    // Its a number!
-                    if (type == "T" || type == "U") {
-                        // Numbers are invalid for target
-                        throw new TypeError(`Error at line ${currentLine}: Invalid value for target.`);
-                    }
-                    bitParam = 0x2;
-                    CodeObj.content.push(adjustBits(varValue, 8, currentLine));
-                } else if (varName[0] === "&") {
-                    // Its address of a memory!
-                    if (type == "T" || type == "U") {
-                        //  address of a memory are invalid for target
-                        throw new TypeError(`Error at line ${currentLine}: Invalid value for target.`);
-                    }
-                    bitParam = 0x2;
-                    CodeObj.content.push(adjustBits(getMemoryAddress(varName.slice(1)), 8, currentLine));
-                } else {
-                    bitParam = 0x1 << (type === "U" ? 2 : 0);
-                    CodeObj.content.push(getMemoryAddress(varName, currentLine));
                 }
-                CodeObj.content[0] |= bitParam;
-                CodeObj.size++;
+                CodeObj.content.push(param.value);
                 CodeObj.content_type.push(type);
+                if (type === "U") {
+                    CodeObj.content[0] |= param.bitParam << 2;
+                } else {
+                    CodeObj.content[0] |= param.bitParam;
+                }
+                CodeObj.size++;
                 continue;
             case "l":
                 CodeObj.size += 8;
@@ -460,7 +522,7 @@ function assembler(assembly_source) {
                 }
                 for (const varArg of varArgs) {
                     CodeObj.size++;
-                    CodeObj.content.push(getMemoryAddress(varArg.trim()));
+                    CodeObj.content.push(getMemoryAddress(varArg.trim(), currentLine));
                     CodeObj.content_type.push(type);
                 }
                 continue;
@@ -549,6 +611,18 @@ function assembler(assembly_source) {
                         CodeObj.branchLabel = ""
                         // No need to swap, just update opcode. End
                         return false;
+                    case 0xBF:
+                        let origparam = CodeObj.content[1] & 0xF;
+                        switch (CodeObj.content[1] >> 4) {
+                        case 0x0: CodeObj.content[1] = 0x10 | origparam; break;
+                        case 0x1: CodeObj.content[1] = 0x00 | origparam; break;
+                        case 0x2: CodeObj.content[1] = 0x50 | origparam; break;
+                        case 0x3: CodeObj.content[1] = 0x40 | origparam; break;
+                        case 0x4: CodeObj.content[1] = 0x30 | origparam; break;
+                        case 0x5: CodeObj.content[1] = 0x20 | origparam; break;
+                        case 0x6: CodeObj.content[1] = 0x70 | origparam; break;
+                        case 0x7: CodeObj.content[1] = 0x60 | origparam; break;
+                        }
                 }
                 // change branch destination
                 CodeObj.branchLabel = "__" + CodeObj.address;
@@ -641,6 +715,7 @@ function assembler(assembly_source) {
         case "U":
         case "S":
         case "F":
+        case "X":
             bytes = 1;
             break;
         case "B":

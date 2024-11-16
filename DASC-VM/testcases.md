@@ -187,6 +187,103 @@ distant:
 ```
 Expect branches replaced by jumps
 
+### Extended branches
+**True**
+```
+.data
+    m0 10
+    m1 10
+.code
+    BX m0 == m1, next1
+    ADD m0, 1
+next1:
+    SET m1, 1
+    BX m0 != m1, next2
+    ADD m0, 1
+next2:
+    BX m0 > m1,  next3
+    ADD m0, 1
+next3:
+    BX m1 < m0, next4
+    ADD m0, 1
+next4:
+    SET m1, m0
+    BX m0 >= m1, next5
+    ADD m0, 1
+next5:
+    BX m0 <= m1, next6
+    ADD m0, 1
+next6:
+    SET m1, 0
+    BX m1 == 0, next7
+    ADD m0, 1
+next7:
+    SET m1, -1
+    BX m1 != 0, next8
+    ADD m0, 1
+next8:
+    RST
+```
+Expect m0=10.
+
+**False**
+```
+.data
+    m0 10
+    m1 10
+.code
+    BX m0 != m1, next1
+    ADD m0, 1
+next1:
+    SET m1, 1
+    BX m0 == m1, next2
+    ADD m0, 1
+next2:
+    BX m0 <= m1,  next3
+    ADD m0, 1
+next3:
+    BX m1 >= m0, next4
+    ADD m0, 1
+next4:
+    SET m1, m0
+    BX m0 < m1, next5
+    ADD m0, 1
+next5:
+    SET m1, m0
+    BX m0 > m1, next6
+    ADD m0, 1
+next6:
+    SET m1, 0
+    BX m1 != 0, next7
+    ADD m0, 1
+next7:
+    SET m1, -1
+    BX m1 == 0, next8
+    ADD m0, 1
+next8:
+    RST
+```
+Expect m0=18.
+
+**Long jump**
+```
+.data
+    m0 10
+    m1 10
+.code
+    BX m0 != m1, distant
+    BX m0 == m1, distant
+    BX m0 <= m1, distant
+    BX m1 >= m0, distant
+    BX m0 < m1, distant
+    BX m0 > m1, distant
+    BX m1 != 0, distant
+    BX m1 == 0, distant
+    SET64 m0, 0x1011121314151617
+distant:
+    RST
+```
+
 ## Functions
 ### Function calling other function.
 For this example, function arguments will be set before function call and the return value will be received by R register ($).

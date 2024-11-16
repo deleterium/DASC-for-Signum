@@ -94,22 +94,19 @@ long loadProgram(void) {
         return loadProgram();
     }
     register long programPage = 1, messagePage = 1;
-    for (; programPage < header.IDpages; programPage++, messagePage++) {
-        readMessage(txId, programPage, VMM + 4 * messagePage);
-    }
-    if (header.clearNID) {
-        register long end = (header.IDpages + header.NIDpages) * 4;
-        register long vmmIdx = 4 * programPage;
-        while (vmmIdx < end) {
-            VMM[vmmIdx] = 0; vmmIdx++;
-            VMM[vmmIdx] = 0; vmmIdx++;
-            VMM[vmmIdx] = 0; vmmIdx++;
-            VMM[vmmIdx] = 0; vmmIdx++;
+    for (; programPage < header.programSize; programPage++) {
+        if (programPage >= header.IDpages && programPage < header.IDpages + header.NIDpages) {
+            if (header.clearNID) {
+                register long vmmIdx = programPage * 4;
+                VMM[vmmIdx] = 0; vmmIdx++;
+                VMM[vmmIdx] = 0; vmmIdx++;
+                VMM[vmmIdx] = 0; vmmIdx++;
+                VMM[vmmIdx] = 0; vmmIdx++;
+            }
+            continue;
         }
-    }
-    programPage = header.IDpages + header.NIDpages;
-    for (; programPage < header.programSize; programPage++, messagePage++) {
         readMessage(txId, messagePage, VMM + 4* programPage);
+        messagePage++;
     }
     return 0;
 }
@@ -191,6 +188,17 @@ void execHiOpCodeB() {
     if (lowOpCode >= 0x8) {
         // Branches: 0xB8 <= opcode <= 0xBF
         long brch = opCode & 0x7;
+        if (brch == 0x7) {
+            long params = getByte();
+            brch = params >> 4;
+            if (brch < 0x6) {
+                arg1 = getSource((params >> 2) & 0x3) - getSource(params & 0x3);
+            } else {
+                brch -= 6;
+                arg1 = getSource(params & 0x3);
+            }
+            R = arg1;
+        }
         if ((brch == 0x0 && R == 0) ||
             (brch == 0x1 && R != 0) ||
             (brch == 0x2 && R > 0) ||

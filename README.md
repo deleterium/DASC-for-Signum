@@ -110,7 +110,20 @@ The base opCode will be 5-bit, then a branch type param with 3-bit. All branch t
 | 100 | R >= 0 |
 | 101 | R <= 0 |
 | 110 | always |
-| 111 | Reserved |
+| 111 | extended |
+
+### Param Branch extended
+Extended branch is designed to compare memory values. It will set the R register and process the branch. An additional byte is needed, where the 4 MSB indicate the branch type and 4 LSB with 2 param Source. The arguments must match the param source and then the offset to branch. The total branch instruction can be from 4 up to 5 bytes.
+| Additional param | Branch condition |
+| --- | --- |
+| 0000SSSS | src1 == src2 |
+| 0001SSSS | src1 != src2 |
+| 0010SSSS | src1 > src2 |
+| 0011SSSS | src1 < src2 |
+| 0100SSSS | src1 >= src2 |
+| 0101SSSS | src1 <= src2 |
+| 011000SS | src == 0 |
+| 011100SS | src != 0 |
 
 ### Param Function
 The base opCode will be 3-bit, then a function type param with 5-bit. The arguments needed will depend on each function, but each argument will always be 1 byte memory address. For all the options, please read the documentation from the SYS opCode.
@@ -162,6 +175,15 @@ The following table shows the type of arguments that can be required by opCodes:
 | Branch | BGEZ | brch | offset | 0xB8 | 0xBC | Jump to offset if R >= 0 |
 | Branch | BLEZ | brch | offset | 0xB8 | 0xBD | Jump to offset if R <= 0 |
 | Branch | BA | brch | offset | 0xB8 | 0xBE | Jump always. Short form for JMP if label is reachable by offset. |
+| Branch | BX | brch | extended, mem, offset | 0xB8 | 0xBF | Jump extended. Check next byte for options. |
+| Branch | BXEQ | brchX, src1, src2 | offset | 0xBF | 0xBF | Jump to offset if src1 == src2 |
+| Branch | BXNE | brchX, src1, src2 | offset | 0xBF | 0xBF | Jump to offset if src1 != src2 |
+| Branch | BXGT | brchX, src1, src2 | offset | 0xBF | 0xBF | Jump to offset if src1 > src2 |
+| Branch | BXLT | brchX, src1, src2 | offset | 0xBF | 0xBF | Jump to offset if src1 < src2 |
+| Branch | BXGE | brchX, src1, src2 | offset | 0xBF | 0xBF | Jump to offset if src1 >= src2 |
+| Branch | BXLE | brchX, src1, src2 | offset | 0xBF | 0xBF | Jump to offset if src1 <= src2 |
+| Branch | BXZR | brchX, src | offset | 0xBF | 0xBF | Jump to offset if src == 0 |
+| Branch | BXNZ | brchX, src | offset | 0xBF | 0xBF | Jump to offset if src != 0 |
 | Jump | RET |  |  | 0xB0 | 0xB0 | Return to address in RA |
 | Jump | JMPR |  |  | 0xB1 | 0xB1 | Jumps to to address in R |
 | Jump | JMP |  | short | 0xB4 | 0xB4 | Jumps to the argument address |
