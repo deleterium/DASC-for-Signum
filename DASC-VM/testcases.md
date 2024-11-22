@@ -284,6 +284,32 @@ distant:
     RST
 ```
 
+### JMPR
+```
+.data
+  a 0
+  b 0
+.bss
+  jumpLocation
+.code
+  SET16 jumpLocation, &label2
+  JMP label1
+  ADD b, 1
+  ADD b, 1
+  ADD b, 1
+label1:
+  SET $, jumpLocation
+  JMPR
+  ADD b, 1
+  ADD b, 1
+  ADD b, 1
+label2:
+  ADD a, 1
+  SLEEP 1
+  RST
+```
+Expect b = 0, a = 1.
+
 ## Functions
 ### Function calling other function.
 For this example, function arguments will be set before function call and the return value will be received by R register ($).

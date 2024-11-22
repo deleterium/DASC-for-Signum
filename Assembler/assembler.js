@@ -58,7 +58,7 @@ function assembler(assembly_source) {
             { op_code: 0xE0, name: "MOD", size:1, args_type: "US", regex: /^\s*MOD\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
             { op_code: 0xF0, name: "SLEEP", size: 1, args_type: "S",regex: /^\s*SLEEP\s+(\$|[*]?[\w"']+)\s*$/i},
             { op_code: 0xF4, name: "NOT", size:1, args_type: "T",regex: /^\s*NOT\s+(\$|[*]?\w+)\s*$/i},
-            { op_code: 0xF8, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*(-?[\w"']+)\s*$/i},
+            { op_code: 0xF8, name: "SET16", size:1, args_type: "Ts", regex: /^\s*SET16\s+(\$|[*]?\w+)\s*,\s*([&-]?[\w"']+)\s*$/i},
             { op_code: 0xFC, name: "SET64", size:1, args_type: "Tl", regex: /^\s*SET64\s+(\$|[*]?\w+)\s*,\s*(-?[\w"']+)\s*$/i}
         ],
         sys_code_table: [
@@ -498,7 +498,13 @@ function assembler(assembly_source) {
                 continue;
             case "s":
                 CodeObj.size += 2;
-                CodeObj.content.push(adjustBits(decodeString(defineOrValue(parts[i+1])), 16, currentLine));
+                let argument2 = defineOrValue(parts[i+1])
+                if (argument2.startsWith("&")) {
+                    // using address of a label
+                    CodeObj.jumpLabel = argument2.slice(1);
+                    continue
+                }
+                CodeObj.content.push(adjustBits(decodeString(argument2), 16, currentLine));
                 CodeObj.content_type.push(type);
                 continue;
             case "B": //branch offset will be processed later
