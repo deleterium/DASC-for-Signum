@@ -1,6 +1,6 @@
 #program name DASCVM
 #program description VM contract to run DASC program. Revision 1.
-#program activationAmount 1.5
+#program activationAmount 2
 
 #pragma maxConstVars 10
 #pragma version 2.3
