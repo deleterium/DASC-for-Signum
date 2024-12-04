@@ -151,8 +151,7 @@ This program will send the desired amount of Signa to some address at a given bl
     SYS getCreator, creator
 main:
     SYS getNextTxDetails, txId, sender, amount
-    SET $, txId
-    BZ loop_break
+    BX txId == 0, loop_break
 
     SHR amount, 1
     SYS sendAmount, amount, sender
@@ -192,21 +191,17 @@ setup:
     SYS getCreator, creator
 main:
     SYS getNextTxDetails, txId, sender, amount
-    SET $, txId
-    BZ no_more_tx
+    BX txId == 0, no_more_tx
 
     SUB amount, contractActivation
-    SET $, amount
-    BLZ main           # do not process if too low
-    SHR amount, 1
+    BX amount < 0, main # do not process if too low
 
-    SET $, sender
-    SUB $, creator
-    BNZ process_tx     # Contract will end
-    SET end, 1
+    BX sender != creator, process_tx
+    SET end, 1         # Contract will end
     BA main
 
 process_tx:            # Do your stuff
+    SHR amount, 1      # Divide amount by 2
     SYS sendAmount, amount, sender
     BA main
 
@@ -215,10 +210,12 @@ no_more_tx:            # Do your stuff
     SUB curBal, oneSigna
     SYS sendAmount, curBal, creator
 
-    SET $, end
-    BZ wait_next_activation
+    BX end == 0, wait_next_activation
     RST
 wait_next_activation:
     HARA main
 ```
 Now all incoming transactions with amount greater than VM activation PLUS VSC activation will be processed. When it receives a transaction from creator, the contract end after processing all transactions on that block. The ending part (no_more_tx) will also be processed. If ended, the VM will be ready to run a new VSC in the next block. Creator must send another transaction with a new program, because the ending transaction will not be loaded by VM.
+
+### More info
+Check also `DASC-VM/testcases.md` for more examples.
