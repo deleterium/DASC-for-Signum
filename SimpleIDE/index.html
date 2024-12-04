@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>DASC Assembly IDE</title>
+    <meta charset="utf-8">
+    <script src="highlight.js"></script>
+    <script src="preprocessor.js"></script>
+    <script src="tools.js"></script>
+	<link rel="stylesheet" href="style.css"> 
+
+<script>
+function textKeyUp () {
+    var elem = document.getElementById("codeInput");
+    var text = elem.value;
+
+    // grows text area
+    elem.rows =  (text.match(/\n/g) || '').length + 2;
+
+    if (document.getElementById('onthefly').checked) {
+        if (document.getElementById('preprocess').checked)
+            text = highLevelProcessor(text);
+        if (document.getElementById('highlight').checked)
+            text = asmCodeColor(text);
+        document.getElementById("codeOutput").innerHTML = text;
+    }
+}
+
+function do_overlay(){
+    var elem = document.getElementById('codeInput');
+    if (document.getElementById('overlay').checked) {
+        document.getElementById('rigth_div').style.width="100%";
+        elem.className = "overlay_txt";
+        var y= document.getElementById('codeOutput').offsetTop-1;
+        elem.style.top = (document.getElementById('codeOutput').offsetTop-1) +"px";
+        document.getElementById('codehere').innerHTML="";
+    } else {
+        document.getElementById('rigth_div').style.width="50%";
+        elem.className = "inc_height";
+        document.getElementById('codehere').innerHTML="Code here";
+    }
+}
+function ov_move(val){
+    elem=document.getElementById('codeInput');
+    var x = elem.style.top;
+    elem.style.top= (parseInt(x.replace("px",""))+val).toString()+"px";
+}
+
+function enabletabs(){
+    var el = document.getElementById("codeInput");
+    if (document.getElementById('enabletab').checked){
+        el.addEventListener("keydown", keytab);
+    } else {
+        el.removeEventListener('keydown', keytab);
+    }
+}
+function keytab(e){
+    if (e.keyCode === 9) { // tab was pressed
+        var start = e.target.selectionStart;
+        var end = e.target.selectionEnd;
+        var oldValue = e.target.value;
+        // replace point and change input value
+        var newValue = oldValue.slice(0, start) + '    ' + oldValue.slice(end)
+        e.target.value = newValue;
+        // replace cursor
+        e.target.selectionStart = e.target.selectionEnd = start + 4;
+        // prevent the focus lose
+        event.preventDefault();
+        return false;
+    }
+}
+</script>
+</head>
+<body onload='javascript:textKeyUp()'>
+
+<h1>DASC Assembly IDE</h1> 
+<div class="container">
+	
+	<input id="preprocess" type="checkbox" onclick="textKeyUp()" >
+	<input id="highlight" type="checkbox" onclick="textKeyUp()" checked="true">
+	<input id="onthefly" type="checkbox" onclick="textKeyUp()" checked="true">
+	<input id="enabletab" type="checkbox" onclick="enabletabs()">
+	<input id="overlay" type="checkbox" onclick="do_overlay()" >
+	
+	<label id="bt1" for="preprocess" title="Create output compatible with SmartContractor compiler"> Process code</label>
+	<label id="bt2" for="highlight" title="Toggle colors"> Syntax highlight</label>
+	<label id="bt3" for="onthefly" title="Process syntax rules on every key press"> Refresh on-the-fly</label>
+	<label id="bt4" for="enabletab" title="Allow tabs breaks textarea undo history"> Allow tabs</label>
+	<label id="bt5" for="overlay"> Overlay output</label>
+	 
+	<button class="arrow" onClick="javascript:ov_move(1);">↓</button> <button class="arrow" onClick="javascript:ov_move(-1);">↑</button>
+</div>
+
+<div>
+    <div class="left">
+        <h3>Highligthed code:</h3>
+        <div class="code" id="codeOutput">
+        </div>
+
+    </div>
+
+    <div id="rigth_div" class="right">
+        <h3 id="codehere">Code here:</h3>
+        <div>
+        <textarea id="codeInput" class="inc_height" spellcheck="false" wrap="off" onkeyup='javascript:textKeyUp();'>.data
+  participants 0
+
+.bss
+  currentTX_txid
+  currentTX_sender
+  currentTX_amount
+  creator
+
+.code
+
+setup:
+  SYS getCreator, creator
+
+start:
+repeat
+  SYS getNextTxDetails, currentTX_txid, currentTX_sender, currentTX_amount
+  if currentTX_txid == 0
+    HARA start
+  endif
+  if currentTX_sender == creator
+    RST
+  endif
+  # process transaction!!!
+loop
+</textarea>
+        <br/><br/>
+        <footer>Releases:<br/>
+             • March 2021 • <a href="https://github.com/deleterium/BurstAT">deleterium</a> • Syntax highlighting • Loops and conditionals preprocessor • Overlay mode<br/>
+             • November 2025 • <a href="https://github.com/deleterium/DASC-for-Signum">deleterium</a> • Adapted to DASC<br/>
+        </footer>
+
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,77 @@
+/*==================| GENERAL CONFIGS |=================*/
+h3 { margin: 1vh; }
+input { display: none; }
+
+body { 	
+	margin: 0;
+	padding: 0; 
+	background: #ddd;
+	font-size: 100%; }
+
+h1{	padding: 1vh;
+	padding-top: 2vh;
+	background: #da7;
+	margin: 0 0 3vh 0;
+	text-align: center;
+	border-bottom: 1vh double #444; }
+	
+/*=================| BUTTONS CONFIGS |=================*/
+.arrow {
+	margin: 0;
+	padding: 1vh; }
+
+label, button, #createtext { 
+	margin: 1vh;
+	padding: 1vh;
+	background: #fff;
+	border: double 0.5vh #ccc; }
+	
+#createtext { 
+	background: #9d9;
+	border: double 0.8vh #797; }
+
+#bt5:hover { background: #ffb; }
+label:hover { background: #ddf; }
+.arrow:hover { background: #ffb; }
+#createtext:hover { background: #bdb; }
+
+#preprocess:checked ~ #bt1 { background: #ccf; }
+#highlight:checked  ~ #bt2 { background: #ccf; }
+#onthefly:checked   ~ #bt3 { background: #ccf; }
+#enabletab:checked  ~ #bt4 { background: #ccf; }
+#overlay:checked    ~ #bt5 { background: #ff9; }
+
+/*================| CODE CONFIGS |=================*/
+.code {
+	padding: 2vh; 
+	white-space: pre;
+	word-wrap: break-word; 
+	font-family: "Lucida Console", "Courier New", monospace; }
+            
+textarea {
+	color: #fff;
+	width: 45vw;
+	padding: 2vh;
+	resize: none;
+	overflow: auto;
+	font-size: 100%;
+	background: #446;
+	border:0;
+	font-family: "Lucida Console", "Courier New", monospace; }
+        
+.overlay_txt {
+	color: #000;
+	width: 95vw;
+	opacity: 0.3;
+	background: #fff;
+	position: absolute; }
+
+/*================| OTHERS CONFIGS |=================*/
+footer {
+	font-size: 0.875em;
+	padding: 50px 50px 0 0; }
+           
+.left {	float: left; }
+.right { float: right; }
+.right, .left {	width: 48vw; }
+.inc_height { min-height: 150px; }
