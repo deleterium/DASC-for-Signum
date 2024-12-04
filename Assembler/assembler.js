@@ -43,17 +43,17 @@ function assembler(assembly_source) {
             { op_code: 0xB1, name: "JMPR", size:1, args_type: "", regex: /^\s*JMPR\s*$/i},
             { op_code: 0xB2, name: "SRA", size:1, args_type: "", regex: /^\s*SRA\s*$/i},
             { op_code: 0xB3, name: "LRA", size:1, args_type: "", regex: /^\s*LRA\s*$/i},
-            { op_code: 0xB4, name: "JMP", size:1, args_type: "J", regex: /^\s*JMP\s+(\w+)\s*$/i},
-            { op_code: 0xB5, name: "CALL", size:1, args_type: "J", regex: /^\s*CALL\s+(\w+)\s*$/i},
-            { op_code: 0xB7, name: "HARA", size:1, args_type: "J", regex: /^\s*HARA\s+(\w+)\s*$/i},
-            { op_code: 0xB8, name: "BZ", size:1, args_type: "B", regex: /^\s*BZ\s+(\w+)\s*$/i},
-            { op_code: 0xB9, name: "BNZ", size:1, args_type: "B", regex: /^\s*BNZ\s+(\w+)\s*$/i},
-            { op_code: 0xBA, name: "BGZ", size:1, args_type: "B", regex: /^\s*BGZ\s+(\w+)\s*$/i},
-            { op_code: 0xBB, name: "BLZ", size:1, args_type: "B", regex: /^\s*BLZ\s+(\w+)\s*$/i},
-            { op_code: 0xBC, name: "BGEZ", size:1, args_type: "B", regex: /^\s*BGEZ\s+(\w+)\s*$/i},
-            { op_code: 0xBD, name: "BLEZ", size:1, args_type: "B", regex: /^\s*BLEZ\s+(\w+)\s*$/i},
-            { op_code: 0xBE, name: "BA", size:1, args_type: "B", regex: /^\s*BA\s+(\w+)\s*$/i},
-            { op_code: 0xBF, name: "BX", size:3, args_type: "BXSS", regex: /^\s*BX\s+(\$|[&*-]?[\w"']+)\s*([!=<>]+)\s+(\$|[&*-]?[\w"']+),\s*(\w+)\s*$/i},
+            { op_code: 0xB4, name: "JMP", size:1, args_type: "J", regex: /^\s*JMP\s+(&?\w+)\s*$/i},
+            { op_code: 0xB5, name: "CALL", size:1, args_type: "J", regex: /^\s*CALL\s+(&?\w+)\s*$/i},
+            { op_code: 0xB7, name: "HARA", size:1, args_type: "J", regex: /^\s*HARA\s+(&?\w+)\s*$/i},
+            { op_code: 0xB8, name: "BZ", size:1, args_type: "B", regex: /^\s*BZ\s+(&?\w+)\s*$/i},
+            { op_code: 0xB9, name: "BNZ", size:1, args_type: "B", regex: /^\s*BNZ\s+(&?\w+)\s*$/i},
+            { op_code: 0xBA, name: "BGZ", size:1, args_type: "B", regex: /^\s*BGZ\s+(&?\w+)\s*$/i},
+            { op_code: 0xBB, name: "BLZ", size:1, args_type: "B", regex: /^\s*BLZ\s+(&?\w+)\s*$/i},
+            { op_code: 0xBC, name: "BGEZ", size:1, args_type: "B", regex: /^\s*BGEZ\s+(&?\w+)\s*$/i},
+            { op_code: 0xBD, name: "BLEZ", size:1, args_type: "B", regex: /^\s*BLEZ\s+(&?\w+)\s*$/i},
+            { op_code: 0xBE, name: "BA", size:1, args_type: "B", regex: /^\s*BA\s+(&?\w+)\s*$/i},
+            { op_code: 0xBF, name: "BX", size:3, args_type: "BXSS", regex: /^\s*BX\s+(\$|[&*-]?[\w"']+)\s*([!=<>]+)\s+(\$|[&*-]?[\w"']+),\s*(&?\w+)\s*$/i},
             { op_code: 0xC0, name: "SYS", size:1, args_type: "F", regex: /^\s*SYS\s+(\w+)(.*)$/i},
             { op_code: 0xE0, name: "MOD", size:1, args_type: "US", regex: /^\s*MOD\s+(\$|[*]?\w+)\s*,\s*(\$|[&*-]?[\w"']+)\s*$/i},
             { op_code: 0xF0, name: "SLEEP", size: 1, args_type: "S",regex: /^\s*SLEEP\s+(\$|[*]?[\w"']+)\s*$/i},
@@ -527,8 +527,12 @@ function assembler(assembly_source) {
                     throw new TypeError(`Error at line ${currentLine}: Invalid number of arguments for sys function ${search.name}.`);
                 }
                 for (const varArg of varArgs) {
+                    let para = getParam(varArg.trim(),"S");
+                    if (para.bitParam !== 1) {
+                        throw new TypeError(`Error at line ${currentLine}: SYS functions only accept arguments type '01': Memory addresses. Argument '${varArg.trim()}' does not match the type.`);
+                    }
                     CodeObj.size++;
-                    CodeObj.content.push(getMemoryAddress(varArg.trim(), currentLine));
+                    CodeObj.content.push(para.value);
                     CodeObj.content_type.push(type);
                 }
                 continue;
@@ -586,11 +590,8 @@ function assembler(assembly_source) {
     function checkBranches(CodeObj, idx) {
 
         if (CodeObj.branchLabel.length != 0) {
-            let search = AsmObj.labels.find( obj => obj.label === CodeObj.branchLabel );
-            if (search === undefined) {
-                throw new TypeError(`Error at line: ${idx + 1}: Found an unknow label`);
-            }
-            let offset = search.address - (CodeObj.address + CodeObj.size);
+            let addr = getLabelAddress(CodeObj.branchLabel);
+            let offset = addr - (CodeObj.address + CodeObj.size);
 
             if (offset < -128 || offset > 127 ) {
                 // branch offset overflow
@@ -650,19 +651,37 @@ function assembler(assembly_source) {
         return true;
     }
 
+    function getLabelAddress(labelName) {
+        let search
+        if (labelName.startsWith("&")) {
+            let content = labelName.slice(1)
+            if (/^\d+$/.test(content) || /^0x[\da-fA-F]+$/.test(content)) {
+                // it's a number
+                search = { address: Number(content)}
+            } else {
+                // it's a variable
+                search = AsmObj.code.find(item => item.source === `@${content}`)
+            }
+        } else {
+            // it's a regular label
+            search = AsmObj.labels.find(obj => obj.label === labelName );
+        }
+        if (search === undefined) {
+            throw new TypeError(`Error 5 at compilation: Label '${labelName}' not found.`);
+        }
+        return search.address
+    }
+
     function fillJumpsAndBranches(CodeObj) {
 
         if (CodeObj.branchLabel.length != 0) {
-            let search = AsmObj.labels.find( obj => obj.label=== CodeObj.branchLabel );
-            let offset = search.address - (CodeObj.address + CodeObj.size);
+            let addr = getLabelAddress(CodeObj.branchLabel);
+            let offset = addr - (CodeObj.address + CodeObj.size);
             CodeObj.content.push(offset);
             CodeObj.content_type.push("B");
         } else if (CodeObj.jumpLabel.length != 0) {
-            let search = AsmObj.labels.find( obj => obj.label=== CodeObj.jumpLabel );
-            if (search === undefined) {
-                throw new TypeError("bytecode compiling error #5");
-            }
-            CodeObj.content.push(search.address);
+            let addr = getLabelAddress(CodeObj.jumpLabel);
+            CodeObj.content.push(addr);
             CodeObj.content_type.push("J");
         }
         delete CodeObj.branchLabel;
