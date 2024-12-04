@@ -8,7 +8,7 @@ Check all 32 system functions that are included. They follow the same name from 
 | Assets | 0x13 | getAssetCirculating | retVal, assetId |
 | Assets | 0x1B | getAssetHoldersCount | retVal, minimumQuantity, assetId |
 | Assets | 0x1E | issueAsset | retVal, name1, name2, decimals |
-| Assets | 0x1F | distributeToHolders | holdersAssetMinQuantity, holdersAsset, amountToDistribute, assetToDistribute |
+| Assets | 0x1F | distributeToHolders | holdersAssetMinQuantity, holdersAsset, amountToDistribute, assetToDistribute, quantityToDistribute |
 | Blockchain | 0x03 | getCurrentBlockheight | retVal |
 | Blockchain | 0x04 | getWeakRandomNumber | retVal |
 | Contract | 0x05 | getCreator | retVal |
