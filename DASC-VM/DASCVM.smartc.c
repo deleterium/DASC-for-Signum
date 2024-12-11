@@ -20,7 +20,7 @@ long opCode, hiOpCode, lowOpCode, opCache;
 long *pArg1, *pArg2, *pArg3, *pArg4, *pArg5;
 long arg1, arg2;
 
-long txId; // Current transaction ID
+long txId; // Current transaction ID. Can track current program in execution.
 long creator = getCreator();
 
 struct STATS {
