@@ -9,6 +9,10 @@ This projects aims to create an architecture that will be executed by a Smart Co
 * Assembler: Revision 1
 * VM Contract: Revision 1
 
+## Tools
+* Go to [Assembler](./DASC-VM/Assembler/)
+* Go to [SimpleIDE](./DASC-VM/SimpleIDE/)
+
 ## VM Smart Contract source code
 
 Go to [VM source code](./DASC-VM/README.md).
@@ -196,4 +200,4 @@ The following table shows the type of arguments that can be required by opCodes:
 
 ## Assembly syntax
 
-Go to [assembly syntax](./Assembly-syntax.md)
+* Go to [Assembly syntax](./Assembly-syntax.md) to learn more about the assembly language.

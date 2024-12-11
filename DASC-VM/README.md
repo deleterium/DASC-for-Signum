@@ -12,11 +12,8 @@ DASC was created as a conceptual project, showing that it is possible to run sma
 * Creating a smart contract that can be remotely controlled to do anything.
 * Creating a VSC that can runs just like a regular smart contract processing transactions, but can be updated by the creator.
 
-## Status
-Currently in beta, running tests and subject to change.
-
 ## Source code
 
 Keep in mind that Signum bytecode does not allow to create jump tables neither jump to arbitrary addresses (like creating a function's table). So the opCode processing should be an arcaic 'nested ifs' and I'm trying to balance them.
 
-[Revision 0](./DASCVM.0.smartc.c)
+[Revision 1](./DASCVM.smartc.c)

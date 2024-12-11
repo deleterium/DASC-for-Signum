@@ -218,4 +218,13 @@ wait_next_activation:
 Now all incoming transactions with amount greater than VM activation PLUS VSC activation will be processed. When it receives a transaction from creator, the contract end after processing all transactions on that block. The ending part (no_more_tx) will also be processed. If ended, the VM will be ready to run a new VSC in the next block. Creator must send another transaction with a new program, because the ending transaction will not be loaded by VM.
 
 ### More info
-Check also `DASC-VM/testcases.md` for more examples.
+* Check the [testcases](./DASC-VM/testcases.md) for more examples.
+* Check fully working samples:
+  * [buyToken](./samples/buyToken.md)
+  * [DASCtoken](./samples/DASCtoken.md)
+  * [ExecuteMessage](./samples/ExecuteMessage.md)
+  * [Fortune](./samples/Fortune.md)
+  * [FunctionPointerTable](./samples/FunctionPointerTable.md)
+  * [Megasena](./samples/Megasena.md)
+  * [Raffle](./samples/Raffle.md)
+  * [SwapTokens](./samples/SwapTokens.md)
